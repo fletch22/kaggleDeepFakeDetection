@@ -15,5 +15,7 @@ class BatchDataLoaderServiceTest(TestCase):
 
     logger.info(batch_data.df_metadata.head(20))
 
+    logger.info(batch_data.image_dir_path)
+
     # Assert
     assert (len(batch_data.data_files) > 0)

@@ -2,9 +2,12 @@ import os
 from os import walk as walker
 from unittest import TestCase
 
-import config
-from services import file_services
+from cv2 import cv2
 
+import config
+from services import file_services, batch_data_loader_service
+
+logger = config.create_logger(__name__)
 
 class FileServicesTest(TestCase):
 
@@ -24,3 +27,19 @@ class FileServicesTest(TestCase):
 
     # Assert
     os.path.exists(metadata_path)
+
+  def test_get_video_info(self):
+    # Arrange
+    bad_data = batch_data_loader_service.load_batch(0)
+
+    path_file = bad_data.get_candidate_file_path(0)
+
+    logger.info(path_file)
+
+    v_cap = cv2.VideoCapture(str(path_file))
+    v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    logger.info(f"Num frames: {v_len}")
+
+    # Act
+    # Assert

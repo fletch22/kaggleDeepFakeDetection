@@ -1,3 +1,4 @@
+import os
 from unittest import TestCase
 
 import config
@@ -5,19 +6,16 @@ from services import batch_data_loader_service
 
 logger = config.create_logger(__name__)
 
+class BatchDataTest(TestCase):
 
-class BatchDataLoaderServiceTest(TestCase):
-
-  def test_batch_load(self):
+  def test_get_file(self):
     # Arrange
-    # Act
     batch_data = batch_data_loader_service.load_batch(0)
 
-    logger.info(batch_data.df_metadata.head(20))
+    # Act
+    file_path = batch_data.get_candidate_file_path(0)
 
-    logger.info(batch_data.image_dir_path)
+    logger.info(file_path)
 
     # Assert
-    assert (len(batch_data.data_files) > 0)
-
-
+    assert (os.path.exists(file_path))

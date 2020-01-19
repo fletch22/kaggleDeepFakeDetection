@@ -3,3 +3,4 @@ venv
 tests/.cache/
 services/__pycache__/
 config/__pycache__/
+tests/services/.cache/

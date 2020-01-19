@@ -1,5 +1,4 @@
 import os
-from os import walk as walker
 from unittest import TestCase
 
 from cv2 import cv2
@@ -8,6 +7,7 @@ import config
 from services import file_services, batch_data_loader_service
 
 logger = config.create_logger(__name__)
+
 
 class FileServicesTest(TestCase):
 
@@ -32,7 +32,7 @@ class FileServicesTest(TestCase):
     # Arrange
     bad_data = batch_data_loader_service.load_batch(0)
 
-    path_file = bad_data.get_candidate_file_path(0)
+    path_file = bad_data.get_candidate_file_path(1)
 
     logger.info(path_file)
 

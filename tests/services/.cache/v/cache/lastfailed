@@ -1,3 +1,4 @@
 {
-  "BatchDataLoaderServiceTest.py": true
+  "BatchDataLoaderServiceTest.py": true,
+  "TestVideoServices.py": true
 }

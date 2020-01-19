@@ -26,8 +26,6 @@ def get_face_infos(image):
     padding_bottom = int((height * (padding_bottom_pct / 100)) / 2)
     padding_horiz = int(((right - left) * (padding_sides_pct / 100)) / 2)
 
-    logger.info(f"pv: {padding_top}")
-
     top -= padding_top
     bottom += padding_bottom
     right += padding_horiz

@@ -15,7 +15,7 @@ class TestVideoServices(TestCase):
     index = 100
 
     # Act
-    image = video_service.get_image_from_vid(vid_path, index)
+    image = video_service.get_single_image_from_vid(vid_path, index)
 
     show_image(image, f"Image {index}: {vid_path.name}")
 

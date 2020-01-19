@@ -11,3 +11,7 @@ Execute the following:
     conda install -C conda-forge dlib
     pip install -r requirements.txt
     
+# Strategies
+
+    1. Problem? There is a potential problem in data leakage. The same person is in more than one video. If we split between test and validation,
+    the system might learn to recognize a face base on the fact that 

@@ -1,14 +1,17 @@
+from pathlib import Path
+from typing import List, Tuple, Dict, Union
+
 import face_recognition
-from PIL import Image, ImageDraw
 import numpy as np
+from PIL import Image, ImageDraw
+
 import config
-from services import image_service
 
 logger = config.create_logger(__name__)
 
 
 # https://github.com/ageitgey/face_recognition/blob/master/examples/find_faces_in_picture.py
-def get_face_infos(image):
+def get_face_infos(image) -> List[Tuple]:
   face_locations = face_recognition.face_locations(image)
 
   padding_top_pct = 105
@@ -59,3 +62,17 @@ def add_face_lines(image):
   # revert to original image type
   return np.array(pil_image)
 
+
+def get_face_data(image, frame_index: int, file_path: Path) -> Dict[str, Union[List[Dict[str, Union[object, List]]], int, str]]:
+  face_infos = get_face_infos(image)
+  faces_list = []
+  for fi in face_infos:
+    face_image, _, _, _, _ = fi
+    face_landmarks_list = face_recognition.face_landmarks(face_image)
+    face_info_landmarks = dict(face_image=face_image, face_landmarks_list=face_landmarks_list)
+    faces_list.append(face_info_landmarks)
+
+  if len(faces_list) == 0:
+    logger.info(f"No face found for frame {frame_index} in '{file_path.name}'.")
+
+  return dict(face_info_landmarks=faces_list, frame_index=frame_index, file_path=file_path)

@@ -14,6 +14,10 @@ TRAIN_DIR_PREFIX = 'dfdc_train_part_'
 
 METADATA_FILENAME = 'metadata.json'
 
+OUTPUT_PATH = os.path.join(KAGGLE_DATA_PATH, "output")
+SMALL_HEAD_IMAGE_PATH = os.path.join(OUTPUT_PATH, "small_heads")
+os.makedirs(SMALL_HEAD_IMAGE_PATH, exist_ok=True)
+
 
 def get_train_batch_path(index: int):
   return os.path.join(TRAIN_PARENT_PATH, f"{TRAIN_DIR_PREFIX}{index}")

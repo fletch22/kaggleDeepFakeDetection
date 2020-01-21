@@ -50,25 +50,26 @@ class TestFaceRecogService(TestCase):
       logger.info(f"Getting {i}th video.")
       vid_path = batch_data.get_candidate_file_path(i)
 
-      video_service.process_all_video_frames(vid_path, get_face_data)
+      video_service.process_all_video_frames(vid_path, face_recog_service.get_face_data)
     stopwatch.stop()
 
     logger.info(stopwatch)
 
+  def test_get_face_rate_with_spark(self, ):
+    # Arrange
+    batch_data: BatchData = batch_data_loader_service.load_batch(0)
 
-def get_face_data(image, frame_index: int, file_path: Path):
-  face_infos = face_recog_service.get_face_infos(image)
-  face_data = []
-  all_faces = []
-  for fi in face_infos:
-    face_image, _, _, _, _ = fi
-    face_landmarks_list = face_recognition.face_landmarks(face_image)
-    all_faces.append(face_landmarks_list)
-    # image_service.show_image(face_image)
+    logger.info("Got batch data.")
 
-  if len(all_faces) == 0:
-    logger.info(f"No face found for frame {frame_index} in '{file_path.name}'.")
+    stopwatch = Stopwatch()
+    stopwatch.start()
+    num_videos = 1  # batch_data.size()
+    for i in range(num_videos):
+      logger.info(f"Getting {i}th video.")
+      vid_path = batch_data.get_candidate_file_path(i)
+      video_service.process_all_video_frames_with_spark(vid_path)
 
-  face_data.append((all_faces, frame_index, file_path))
+    stopwatch.stop()
 
-  return face_data
+    logger.info(stopwatch)
+

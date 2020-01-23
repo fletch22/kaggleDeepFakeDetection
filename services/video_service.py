@@ -72,7 +72,6 @@ def get_num_frames(video_file_path: Path) -> int:
 
 def process_all_video_frames_with_spark(video_file_path: Path):
   cap = None
-  results = []
 
   logger.info("About to get video.")
   try:
@@ -81,12 +80,12 @@ def process_all_video_frames_with_spark(video_file_path: Path):
 
     frame_infos = [(str(video_file_path), i) for i in range(num_frames)]
 
-    spark_service.execute(frame_infos, process_one_frame_with_spark)
+    face_data = spark_service.execute(frame_infos, process_one_frame_with_spark, num_slices=20)
   finally:
     if cap is not None:
       cap.release()
 
-  return results
+  return face_data
 
 
 def process_one_frame_with_spark(frame_info: Tuple):
@@ -106,3 +105,5 @@ def process_one_frame_with_spark(frame_info: Tuple):
 
     face_image_converted = cv.cvtColor(face_image, cv.COLOR_BGR2RGB)
     cv2.imwrite(face_path, face_image_converted)
+
+  return face_data

@@ -15,3 +15,14 @@ Execute the following:
 
     1. Problem? There is a potential problem in data leakage. The same person is in more than one video. If we split between test and validation,
     the system might learn to recognize a face base on the fact that 
+
+# How to install pytorch and torchvision
+
+Windows:
+
+conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
+
+MacOs:
+
+conda install pytorch torchvision -c pytorch
+

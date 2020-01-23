@@ -18,6 +18,10 @@ OUTPUT_PATH = os.path.join(KAGGLE_DATA_PATH, "output")
 SMALL_HEAD_IMAGE_PATH = os.path.join(OUTPUT_PATH, "small_heads")
 os.makedirs(SMALL_HEAD_IMAGE_PATH, exist_ok=True)
 
+SAMPLE_IMAGES_PATH = os.path.join(KAGGLE_DATA_PATH, "images")
+os.makedirs(SAMPLE_IMAGES_PATH, exist_ok=True)
+
+WOMAN_PROFILE_IMAGE_PATH = os.path.join(SAMPLE_IMAGES_PATH, "woman_profile.jpg")
 
 def get_train_batch_path(index: int):
   return os.path.join(TRAIN_PARENT_PATH, f"{TRAIN_DIR_PREFIX}{index}")

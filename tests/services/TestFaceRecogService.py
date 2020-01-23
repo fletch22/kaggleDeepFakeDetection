@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest import TestCase
 
@@ -64,12 +65,22 @@ class TestFaceRecogService(TestCase):
     stopwatch = Stopwatch()
     stopwatch.start()
     num_videos = 1  # batch_data.size()
+    all_face_data = []
     for i in range(num_videos):
       logger.info(f"Getting {i}th video.")
       vid_path = batch_data.get_candidate_file_path(i)
-      video_service.process_all_video_frames_with_spark(vid_path)
+      face_data = video_service.process_all_video_frames_with_spark(vid_path)
+      all_face_data.append(face_data)
 
     stopwatch.stop()
 
     logger.info(stopwatch)
+
+  def test_haar_cascade(self):
+    # Arrange
+    image_path: Path = Path(config.WOMAN_PROFILE_IMAGE_PATH)
+    # Act
+    face_recog_service.get_face_data_from_profile(image_path)
+    # Assert
+
 

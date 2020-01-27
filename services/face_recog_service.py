@@ -7,14 +7,18 @@ import face_recognition
 import numpy as np
 from PIL import Image, ImageDraw
 from cv2 import data
+from pandas import DataFrame
 
 import config
+from BatchData import BatchData
+from services import file_service, image_service
+from services.image_service import get_image_differences
 
 logger = config.create_logger(__name__)
 
 
 # https://github.com/ageitgey/face_recognition/blob/master/examples/find_faces_in_picture.py
-def get_face_infos(image) -> List[Tuple]:
+def get_face_infos(image, total_image_height, total_image_width) -> List[Tuple]:
   face_locations = face_recognition.face_locations(image)
   face_infos = []
 
@@ -22,8 +26,9 @@ def get_face_infos(image) -> List[Tuple]:
     # Print the location of each face in this image
     top, right, bottom, left = face_location
 
-    bottom, left, right, top = adjust_face_boundary(bottom, left, right, top)
+    bottom, left, right, top = adjust_face_boundary(bottom, left, right, top, total_image_height, total_image_width)
 
+    logger.info(face_location)
     # You can access the actual face itself like this:
     face_image = image[top:bottom, left:right]
 
@@ -32,7 +37,7 @@ def get_face_infos(image) -> List[Tuple]:
   return face_infos
 
 
-def adjust_face_boundary(bottom, left, right, top):
+def adjust_face_boundary(bottom, left, right, top, total_image_width, total_image_height):
   padding_top_pct = 105
   padding_bottom_pct = 160
   padding_sides_pct = 50
@@ -43,9 +48,13 @@ def adjust_face_boundary(bottom, left, right, top):
   padding_horiz = int(((right - left) * (padding_sides_pct / 100)) / 2)
 
   top -= padding_top
-  bottom += padding_bottom
-  right += padding_horiz
+  top = 0 if top < 0 else top
+  padded_bottom = bottom + padding_bottom
+  bottom = bottom if padded_bottom > total_image_height else padded_bottom
+  padded_right = right + padding_horiz
+  right = right if padded_right > total_image_width else padded_right
   left -= padding_horiz
+  left = 0 if left < 0 else left
 
   return bottom, left, right, top
 
@@ -71,12 +80,12 @@ def add_face_lines(image):
   return np.array(pil_image)
 
 
-def get_face_data(image, frame_index: int, file_path: Path) -> Dict[str, Union[List[Dict[str, Union[object, List]]], int, str]]:
-  face_infos = get_face_infos(image)
+def get_face_data(image, height, width, frame_index: int, file_path: Path) -> Dict[str, Union[List[Dict[str, Union[object, List]]], int, str]]:
+  face_infos = get_face_infos(image, height, width)
   faces_list = []
 
   if len(face_infos) == 0:
-    face_infos = get_face_data_from_profile(image)
+    face_infos = get_haar_face_data(image, height, width)
 
   for fi in face_infos:
     face_image, _, _, _, _ = fi
@@ -90,7 +99,7 @@ def get_face_data(image, frame_index: int, file_path: Path) -> Dict[str, Union[L
   return dict(face_info_landmarks=faces_list, frame_index=frame_index, file_path=file_path)
 
 
-def get_face_data_from_profile(image):
+def get_haar_face_data(image, total_image_height, total_image_width):
   # Gets the name of the image file (filename) from sys.argv
   cascPath = os.path.join(data.haarcascades, 'haarcascade_profileface.xml')
 
@@ -118,7 +127,7 @@ def get_face_data_from_profile(image):
     right = x + w
 
     # cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    bottom, left, right, top = adjust_face_boundary(bottom, left, right, top)
+    bottom, left, right, top = adjust_face_boundary(bottom, left, right, top, total_image_height, total_image_width)
 
     # You can access the actual face itself like this:
     face_image = image[top:bottom, left:right]
@@ -126,3 +135,58 @@ def get_face_data_from_profile(image):
     face_infos.append((face_image, top, right, bottom, left))
 
   return face_infos
+
+
+def get_face_diffs(batch_data: BatchData, max_diffs: int = 1):
+  df: DataFrame = batch_data.df_metadata
+
+  df_fakes = df[df['label'] == 'FAKE']
+
+  small_dir_path = config.SMALL_HEAD_IMAGE_PATH
+
+  diffs = []
+  for ndx, row in df_fakes.iterrows():
+    if len(diffs) > max_diffs:
+      break
+    fake_filename = row['candidate_filename']
+    original_filename = row['original_filename']
+
+    orig_dirname = Path(original_filename).stem
+    fake_dirname = Path(fake_filename).stem
+
+    orig_dir_path = os.path.join(small_dir_path, orig_dirname)
+    fake_dir_path = os.path.join(small_dir_path, fake_dirname)
+
+    if os.path.exists(orig_dir_path) and os.path.exists(fake_dir_path):
+      orig_files = file_service.walk(orig_dir_path)
+      orig_file_info = get_file_info(orig_files)
+
+      for of in orig_file_info:
+        file_path = of['file_path']
+        frame_index = of['frame_index']
+        head_index = of['head_index']
+
+        file_to_find = os.path.join(fake_dir_path, f"{frame_index}_{head_index}.png")
+        fake_path = Path(file_to_find)
+        if fake_path.exists():
+          image_diffs = get_image_differences(file_path, fake_path)
+          ssim = image_diffs['ssim']
+          if ssim > 0.93:
+            image_service.show_image(image_diffs['original_image'], f'original {ssim}')
+            image_service.show_image(image_diffs['fake_image'], f'fake {ssim}')
+          head_diff = dict(ssim=ssim, original_path=file_path, fake_path=fake_path)
+          diffs.append(head_diff)
+
+  return diffs
+
+
+def get_file_info(files):
+  file_info = []
+  for f in files:
+    file_path = Path(f)
+    stem_parts = file_path.stem.split("_")
+    frame_index = stem_parts[0]
+    head_index = stem_parts[1]
+    file_info.append(dict(frame_index=frame_index, head_index=head_index, file_path=file_path))
+
+  return file_info

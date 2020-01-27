@@ -9,9 +9,11 @@ import config
 logger = config.create_logger(__name__)
 
 COL_CANDIDATE = "candidate_filename"
+COL_ORIGINAL = "original_filename"
+
 
 class BatchData():
-  df_metadata: Union[Optional[JsonReader], Any] = None
+  df_metadata: DataFrame = None
   data_files: List = None
   image_dir_path: Path = None
 

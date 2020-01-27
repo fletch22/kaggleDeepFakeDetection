@@ -4,7 +4,7 @@ from unittest import TestCase
 from cv2 import cv2
 
 import config
-from services import file_services, batch_data_loader_service
+from services import file_service, batch_data_loader_service
 
 logger = config.create_logger(__name__)
 
@@ -23,7 +23,7 @@ class FileServicesTest(TestCase):
   def test_get_metadata_path(self):
     # Arrange
     # Act
-    metadata_path = file_services.get_metadata_path_from_batch(0)
+    metadata_path = file_service.get_metadata_path_from_batch(0)
 
     # Assert
     os.path.exists(metadata_path)

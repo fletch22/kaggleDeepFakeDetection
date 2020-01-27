@@ -18,6 +18,12 @@ OUTPUT_PATH = os.path.join(KAGGLE_DATA_PATH, "output")
 SMALL_HEAD_IMAGE_PATH = os.path.join(OUTPUT_PATH, "small_heads")
 os.makedirs(SMALL_HEAD_IMAGE_PATH, exist_ok=True)
 
+TRASH_PATH = os.path.join(OUTPUT_PATH, "trash")
+os.makedirs(TRASH_PATH, exist_ok=True)
+
+TINY_IMAGE_PATH = os.path.join(OUTPUT_PATH, "tiny_heads")
+os.makedirs(TINY_IMAGE_PATH, exist_ok=True)
+
 SAMPLE_IMAGES_PATH = os.path.join(KAGGLE_DATA_PATH, "images")
 os.makedirs(SAMPLE_IMAGES_PATH, exist_ok=True)
 

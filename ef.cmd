@@ -1,0 +1,1 @@
+python -m pytest tests\services\mtcnn\TestFaceRecogMtcnnService.py::TestFaceRecogMtcnnService::test_mtcnn_get_many_face_recog_expanded -s

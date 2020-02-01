@@ -33,4 +33,8 @@ def get_train_batch_path(index: int):
   return os.path.join(TRAIN_PARENT_PATH, f"{TRAIN_DIR_PREFIX}{index}")
 
 
+AUDIO_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "audio")
+os.makedirs(SMALL_HEAD_IMAGE_PATH, exist_ok=True)
+
+
 create_logger = LoggerFactory().create_logger

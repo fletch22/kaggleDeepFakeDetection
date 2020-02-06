@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from skimage.measure import compare_ssim as ssim
 
 import config
+from BatchData import BatchData
+from services import batch_data_loader_service, video_service
 
 logger = config.create_logger(__name__)
 
@@ -37,3 +39,10 @@ def get_image_differences(original_file_path: Path, fake_file_path: Path):
   image_f_conv = cv2.cvtColor(image_f, cv2.COLOR_BGR2RGB)
 
   return dict(original_image=image_o_conv, fake_image=image_f_conv, ssim=ssim(image_o, image_f, multichannel=True))
+
+
+def pick_image(batch_index: int, video_index: int, frame_index: int):
+  batch_data: BatchData = batch_data_loader_service.load_batch(batch_index)
+  vid_path: Path = batch_data.get_candidate_file_path(video_index)
+
+  return video_service.get_single_image_from_vid(vid_path, frame_index)

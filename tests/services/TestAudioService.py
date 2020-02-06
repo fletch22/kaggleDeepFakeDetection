@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from unittest import TestCase
 
@@ -7,6 +6,7 @@ from BatchData import BatchData
 from services import audio_service, batch_data_loader_service
 
 logger = config.create_logger(__name__)
+
 
 class TestAudioService(TestCase):
 
@@ -29,8 +29,8 @@ class TestAudioService(TestCase):
     batch_data: BatchData = batch_data_loader_service.load_batch(8)
     vid_path: Path = batch_data.get_candidate_file_path(0)
     clip, sample_rate = audio_service.get_audio_clip_from_video(vid_path=vid_path, start_milli=1000, end_milli=5000)
-    audio_service.display_chart(clip, sample_rate)
 
     # Act
+    audio_service.display_chart(clip, sample_rate)
 
     # Assert

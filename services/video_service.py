@@ -16,7 +16,7 @@ def get_video_capture(video_file_path: Path):
   return cv.VideoCapture(file_path)
 
 
-def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0):
+def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0) -> (object, int, int):
   cap = None
   try:
     cap = get_video_capture(video_file_path)
@@ -35,7 +35,7 @@ def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0):
   return image, height, width
 
 
-def process_all_video_frames(video_file_path: Path, fnProcess, max_process: int):
+def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process: int=None):
   cap = None
   results = []
 
@@ -47,14 +47,18 @@ def process_all_video_frames(video_file_path: Path, fnProcess, max_process: int)
     logger.info("About to process frames in video.")
     count = 0
     for frame_index in range(num_frames):
-      if len(results) > max_process:
+      if max_process is not None and len(results) > max_process:
         break
       logger.info(f"Processing frame {frame_index}.")
       success, image = cap.read()
       image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
       height, width, _ = image.shape
 
-      results.append(fnProcess(image, height, width, frame_index, video_file_path))
+      rez = image, height, width, frame_index, video_file_path
+      if fnProcess is not None:
+        rez = fnProcess(image, height, width, frame_index, video_file_path)
+
+      results.append(rez)
 
 
   finally:

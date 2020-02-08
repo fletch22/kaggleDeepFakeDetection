@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import config
+
+logger = config.create_logger(__name__)
 
 class BlazeBlock(nn.Module):
   def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
@@ -78,9 +81,15 @@ class BlazeFace(nn.Module):
     self.h_scale = 128.0
     self.w_scale = 128.0
     self.min_score_thresh = 0.75
-    self.min_suppression_threshold = 0.3
+    self.min_suppression_threshold = 0.8
 
     self._define_layers()
+
+    if torch.cuda.is_available():
+      dev = "cuda:0"
+    else:
+      dev = "cpu"
+    self.to(torch.device(dev))
 
   def _define_layers(self):
     self.backbone1 = nn.Sequential(

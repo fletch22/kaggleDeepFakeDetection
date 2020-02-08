@@ -73,7 +73,6 @@ def get_num_frames(video_file_path: Path) -> int:
   try:
     v_cap = cv.cv2.VideoCapture(str(video_file_path))
     num_frames = int(v_cap.get(cv.CAP_PROP_FRAME_COUNT))
-    logger.info(f"Found {num_frames} fames.")
   finally:
     if v_cap is not None:
       v_cap.release()

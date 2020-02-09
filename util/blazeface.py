@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -6,6 +8,10 @@ import torch.nn.functional as F
 import config
 
 logger = config.create_logger(__name__)
+
+parent_path = Path(__file__).parent
+anchor_path = Path(parent_path, "anchors.npy")
+weights_path = Path(parent_path, "blazeface.pth")
 
 class BlazeBlock(nn.Module):
   def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
@@ -90,6 +96,9 @@ class BlazeFace(nn.Module):
     else:
       dev = "cpu"
     self.to(torch.device(dev))
+
+    self.load_anchors(str(anchor_path))
+    self.load_weights(str(weights_path))
 
   def _define_layers(self):
     self.backbone1 = nn.Sequential(
@@ -415,3 +424,4 @@ def jaccard(box_a, box_b):
 def overlap_similarity(box, other_boxes):
   """Computes the IOU between a bounding box and set of other boxes."""
   return jaccard(box.unsqueeze(0), other_boxes).squeeze(0)
+

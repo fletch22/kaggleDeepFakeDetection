@@ -1,6 +1,9 @@
 import os
+from pathlib import Path
 
 from config.LoggerFactory import LoggerFactory
+
+PROJECT_PATH = Path(__name__).parent
 
 LOGGING_FILE_PATH: str = "C:\\Users\\Chris\\workspaces\\data\\logs\\kaggleDeepFakeDection\\kaggleDeepFakeDection_1.log"
 

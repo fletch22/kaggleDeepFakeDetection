@@ -1,17 +1,17 @@
+import os
 from pathlib import Path
 from unittest import TestCase
 
+import numpy as np
 import torch
 from cv2 import cv2
 from torch.utils.data.dataloader import DataLoader
-from torchvision import transforms
 
 import config
-from BatchData import BatchData
-from services import batch_data_loader_service, video_service, image_service
+from services import image_service
+from util import blazeface_detection
 from util.BlazeDataSet import BlazeDataSet
 from util.blazeface import BlazeFace
-import numpy as np
 
 logger = config.create_logger(__name__)
 
@@ -29,22 +29,28 @@ class TestBlazeFace(TestCase):
     # Assert
     logger.info(h)
 
-  def testBlazeRealImage(self):
+  def test_blace_real_image(self):
     # Arrange
-    img, height, width = image_service.pick_image(2, 3, 1)
+    # img, height, width = image_service.pick_image(2, 3, 1)
+
+    batch_path = config.get_train_batch_path(0)
+    vid_path = Path(batch_path, "ambabjrwbt.mp4")
+    blaze_dataset = BlazeDataSet(vid_path=vid_path, max_process=10)
+    img = blaze_dataset.__getitem__(0)
 
     blazeface = BlazeFace()
-    blazeface.load_anchors("C:\\Users\\Chris\\workspaces\\kaggleDeepFakeDetection\\util\\anchors.npy")
-    blazeface.load_weights("C:\\Users\\Chris\\workspaces\\kaggleDeepFakeDetection\\util\\blazeface.pth")
 
     image_service.show_image(img)
     logger.info(f"img.shape: {img.shape}")
     height, width, _ = img.shape
 
-    center_offset = ((width - height)//2)
+    image_service.show_image(img)
+
+    center_offset = ((width - height) // 2)
     img = img[:, center_offset:height + center_offset]
     logger.info(f"img.shape: {img.shape}")
     image_service.show_image(img)
+    return
     img_resized = cv2.resize(img, (128, 128), interpolation=cv2.INTER_AREA)
 
     # return
@@ -58,19 +64,21 @@ class TestBlazeFace(TestCase):
 
   def test_dataset_and_loader(self):
     # Arrange
-    blaze_dataset = BlazeDataSet(2, 12)
+    # blaze_dataset = BlazeDataSet(0, 8)
+    batch_path = config.get_train_batch_path(0)
+    vid_path = Path(batch_path, "ambabjrwbt.mp4")
+    blaze_dataset = BlazeDataSet(vid_path=vid_path)
 
-    assert(len(blaze_dataset.originals) == len(blaze_dataset.image_infos))
+    assert (len(blaze_dataset.originals) == len(blaze_dataset.image_infos))
 
     blaze_dataloader = DataLoader(blaze_dataset, batch_size=60, shuffle=False, num_workers=0)
 
     blazeface = BlazeFace()
-    blazeface.load_anchors("C:\\Users\\Chris\\workspaces\\kaggleDeepFakeDetection\\util\\anchors.npy")
-    blazeface.load_weights("C:\\Users\\Chris\\workspaces\\kaggleDeepFakeDetection\\util\\blazeface.pth")
 
     # Act
-    for i_batch, sample_batched in enumerate(blaze_dataloader):
-      h = blazeface.predict_on_batch(sample_batched.detach().numpy())
-      num_faces = np.sum([item.detach().cpu().numpy().shape[0] for item in h])
+    all_video_detections = blazeface_detection.batch_detect(blaze_dataloader, blazeface)
 
-      logger.info(f"Number of faces found: {num_faces}")
+    blazeface_detection.save_cropped_blazeface_image(all_video_detections, blaze_dataset)
+
+
+

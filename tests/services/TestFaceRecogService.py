@@ -10,7 +10,6 @@ from stopwatch import Stopwatch
 import config
 from BatchData import BatchData
 from services import face_recog_service, batch_data_loader_service, video_service, image_service, file_service
-from services.image_service import get_image_differences
 
 logger = config.create_logger(__name__)
 

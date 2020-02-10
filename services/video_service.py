@@ -54,7 +54,7 @@ def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process:
 
       rez = image, height, width, frame_index, video_file_path
       if fnProcess is not None:
-        rez = fnProcess(image, height, width, frame_index, video_file_path)
+        rez = fnProcess(image, height, width, frame_index)
 
       results.append(rez)
 

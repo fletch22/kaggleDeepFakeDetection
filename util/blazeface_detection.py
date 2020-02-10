@@ -12,9 +12,10 @@ logger = config.create_logger(__name__)
 def batch_detect(blaze_dataloader, blazeface):
   all_video_detections = []
   for i_batch, sample_batched in enumerate(blaze_dataloader):
+    # Change batch to include all 3 cropped images.
     h = blazeface.predict_on_batch(sample_batched.detach().numpy())
 
-    # Necessary for PyTorch tensor processing
+    # # Necessary for PyTorch tensor processing
     faces = [item.detach().cpu().numpy() for item in h]
     all_video_detections.extend(faces)
 

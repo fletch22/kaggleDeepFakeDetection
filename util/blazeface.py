@@ -71,9 +71,9 @@ class BlazeFace(nn.Module):
   Based on code from https://github.com/tkat0/PyTorch_BlazeFace/ and
   https://github.com/google/mediapipe/
   """
-  input_size = (128, 128)
+  # input_size = (128, 128)
 
-  def __init__(self):
+  def __init__(self, height:float=128.0, width:float=128.0):
     super(BlazeFace, self).__init__()
 
     # These are the settings from the MediaPipe example graph
@@ -82,10 +82,10 @@ class BlazeFace(nn.Module):
     self.num_anchors = 896
     self.num_coords = 16
     self.score_clipping_thresh = 100.0
-    self.x_scale = 128.0
-    self.y_scale = 128.0
-    self.h_scale = 128.0
-    self.w_scale = 128.0
+    self.x_scale = width
+    self.y_scale = height
+    self.h_scale = height
+    self.w_scale = width
     self.min_score_thresh = 0.75
     self.min_suppression_threshold = 0.8
 

@@ -37,9 +37,8 @@ class FileServicesTest(TestCase):
     logger.info(path_file)
 
     v_cap = cv2.VideoCapture(str(path_file))
-    v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    logger.info(f"Num frames: {v_len}")
+    # v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # logger.info(f"Num frames: {v_len}")
 
     # Act
     # Assert

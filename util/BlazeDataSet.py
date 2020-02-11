@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any, Tuple
 
 import numpy as np
 from cv2 import cv2
@@ -26,6 +26,8 @@ class BlazeDataSet(Dataset):
       self.vid_path: Path = batch_data.get_candidate_file_path(vid_index)
     else:
       self.vid_path = vid_path
+
+    logger.info(f"Getting {self.vid_path.name}.")
 
     # self.image_metas = video_service.process_all_video_frames(self.vid_path, self.get_image_meta, max_process)
     video_service.process_all_video_frames(self.vid_path, self.get_image_meta, max_process)
@@ -169,50 +171,9 @@ class BlazeDataSet(Dataset):
       xmin_oface = int(xmin_frac * width_cropped) + o_xmin
       xmax_oface = int(xmax_frac * width_cropped) + o_xmin
 
-      # logger.info(f"coords: {o_ymin}; {o_ymax}; {o_xmin}; {o_xmax}")
-      # logger.info(f"unpadded: {ymin_oface}; {ymax_oface}; {xmin_oface}; {xmax_oface}")
-
       xmax_oface, xmin_oface, ymax_oface, ymin_oface = self.pad_face_crop(xmax_oface, xmin_oface, ymax_oface, ymin_oface, original_height, original_width)
       image_orig_cropped_face = image_orig[ymin_oface:ymax_oface, xmin_oface:xmax_oface]
       image_faces_found.append(dict(frame_index=frame_index, image=image_orig_cropped_face, video_path=vid_path, xmin=xmin_oface, ymin=ymin_oface))
-
-    return image_faces_found
-
-  def get_face_snapshot(self, all_video_detections, index: int):
-    image_info = self.image_metas[index]
-    detections_in_frame = all_video_detections[index]
-
-    vid_path = image_info['video_path']
-    frame_index = image_info['frame_index']
-    o_ymin, o_ymax, o_xmin, o_xmax = image_info['crop_offset_coord']
-
-    # logger.info(f"El 0: {detections_in_frame}: video_path: {str(vid_path)}; frame_index: {frame_index}")
-
-    image_faces_found = []
-    for face in detections_in_frame:
-      if face.shape[0] == 0:
-        image_faces_found.append(dict(frame_index=frame_index, image=None, video_path=vid_path))
-        continue
-
-      ymin_frac = face[0]
-      xmin_frac = face[1]
-      ymax_frac = face[2]
-      xmax_frac = face[3]
-
-      image_orig = self.originals[frame_index]
-      original_height, original_width = image_orig.shape
-
-      height_crop = o_ymax - o_ymin
-      width_crop = o_xmax - o_xmin
-
-      ymin_oface = int(ymin_frac * height_crop) + o_ymin
-      ymax_oface = int(ymax_frac * height_crop) + o_ymin
-      xmin_oface = int(xmin_frac * width_crop) + o_xmin
-      xmax_oface = int(xmax_frac * width_crop) + o_xmin
-
-      xmax_oface, xmin_oface, ymax_oface, ymin_oface = self.pad_face_crop(xmax_oface, xmin_oface, ymax_oface, ymin_oface, original_height, original_width)
-      image_orig_cropped_face = image_orig[ymin_oface:ymax_oface, xmin_oface:xmax_oface]
-      image_faces_found.append(dict(frame_index=frame_index, image=image_orig_cropped_face, video_path=vid_path))
 
     return image_faces_found
 
@@ -236,13 +197,42 @@ class BlazeDataSet(Dataset):
 
     return x_max, x_min, y_max, y_min
 
-  def merge_sub_frame_detections(self, all_detections: List):
+  def merge_sub_frame_detections(self, all_detections: List) -> List[List]:
+    logger.info(f"About to get unique faces in subframes.")
 
+    det_map = self.convert_subframe_det_to_map(all_detections)
+
+    all_frame_detections = []
+    for ndx, frame_index in enumerate(det_map.keys()):
+      frame_detections = det_map[frame_index]
+
+      frame_det_coords = self.convert_subframe_det_to_original_det(frame_detections, frame_index)
+
+      # logger.info(f"num: {len(frame_det_coords)}")
+
+      all_frame_detections.append(self.get_unique_faces(frame_det_coords, frame_index))
+
+    return all_frame_detections
+
+  def convert_subframe_det_to_original_det(self, frame_detections, frame_index) -> List:
+    frame_det_coords = []
+    for fd in frame_detections:
+      coord_index = fd["coord_index"]
+      sub_frame_detections = fd['sub_frame_detections']
+
+      coord_list = self.get_face_coord_on_original(sub_frame_detections, coord_index)
+
+      # logger.info(f"frame index: {frame_index}; coord_index: {coord_index}; coord_list: {coord_list}")
+
+      frame_det_coords.extend(coord_list)
+
+    return frame_det_coords
+
+  def convert_subframe_det_to_map(self, all_detections) -> Dict:
     det_map = {}
     for ndx, d in enumerate(all_detections):
       coords_list = self.coords_list[ndx]
       frame_index = coords_list['frame_index']
-      logger.info(f"fi: {frame_index}")
 
       frame_detections = []
       if frame_index in det_map.keys():
@@ -252,32 +242,41 @@ class BlazeDataSet(Dataset):
 
       frame_detections.append(dict(coord_index=ndx, sub_frame_detections=d))
 
-    for ndx, frame_index in enumerate(det_map.keys()):
-      frame_detections = det_map[frame_index]
+    return det_map
 
-      frame_det_coords = []
-      for fd in frame_detections:
-        coord_index = fd["coord_index"]
-        sub_frame_detections = fd['sub_frame_detections']
+  def get_unique_faces(self, frame_det_coords: List, frame_index: int) -> List[Dict]:
+    min_diff = 50
+    unique_face_coords: List[Tuple[int, Any, Any]] = []
+    for ndx, coords in enumerate(frame_det_coords):
+      xmin = coords['xmin']
+      ymin = coords['ymin']
 
-        coord_list = self.get_face_coord_on_original(sub_frame_detections, coord_index)
+      # logger.info(f"frame_index: {frame_index}; xmin: {xmin}; ymin: {ymin}")
 
-        logger.info(f"frame index: {frame_index}; coord_index: {coord_index}; coord_list: {coord_list}")
+      if len(unique_face_coords) == 0:
+        unique_face_coords.append((ndx, xmin, ymin))
+      else:
+        # Are any coords in unique close? If yes then skip.
+        is_unique = True
+        for in_ndx, (u_ndx, u_xmin, u_ymin) in enumerate(unique_face_coords):
+          x_diff = abs(xmin - u_xmin)
+          y_diff = abs(ymin - u_ymin)
 
-        frame_det_coords.extend(coord_list)
+          if x_diff < min_diff and y_diff < min_diff:
+            is_unique = False
+            break
 
-      for coords in frame_det_coords:
-        logger.info(f"xmin: {coords['xmin']}")
+        # logger.info(f"x_diff: {x_diff}; y_diff: {y_diff}")
+        # logger.info(f"x_diff: {x_diff}; y_diff: {y_diff}")
+        if is_unique:
+          unique_face_coords.append((ndx, xmin, ymin))
 
-      # break
+    return [dict(coords=frame_det_coords[ndx], frame_index=frame_index) for (ndx, _, _) in unique_face_coords]
 
   def get_face_coord_on_original(self, detections_in_sub_frame: List, coord_index: int) -> List:
     c = self.coords_list[coord_index]
     frame_index = c['frame_index']
     coords = c['sub_frame_coords']
-
-    # logger.info(f"keys: {c.keys()}")
-    # raise Exception("foo")
 
     o_ymin = coords['ymin']
     o_ymax = coords['ymax']
@@ -307,8 +306,5 @@ class BlazeDataSet(Dataset):
       xmax_oface = int(xmax_frac * width_crop) + o_xmin
 
       original_coords.append(dict(xmax=xmax_oface, xmin=xmin_oface, ymax=ymax_oface, ymin=ymin_oface))
-
-      # xmax_oface, xmin_oface, ymax_oface, ymin_oface = self.pad_face_crop(xmax_oface, xmin_oface, ymax_oface, ymin_oface, original_height, original_width)
-      # original_coords.append(dict(xmax=xmax_oface, xmin=xmin_oface, ymax=ymax_oface, ymin=ymin_oface))
 
     return original_coords

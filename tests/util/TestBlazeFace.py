@@ -34,9 +34,10 @@ class TestBlazeFace(TestCase):
     # img, height, width = image_service.pick_image(2, 3, 1)
     blazeface = BlazeFace()
 
-    batch_path = config.get_train_batch_path(0)
+    batch_path = config.get_train_batch_path(2)
     # vid_filename = "ambabjrwbt.mp4"
-    vid_filename = "aimzesksew.mp4"
+    # vid_filename = "aimzesksew.mp4"
+    vid_filename = "aejroilouc.mp4"
     vid_path = Path(batch_path, vid_filename)
 
     logger.info(f"Odim: {video_service.get_single_image_from_vid(vid_path, 13)[0].shape}")
@@ -44,11 +45,11 @@ class TestBlazeFace(TestCase):
     blaze_dataset = BlazeDataSet(vid_path=vid_path, max_process=10)
 
     for i in range(1, 3):
-      img = blaze_dataset.__getitem__(i)
-      image_service.show_image(img)
+      sub_frame_img = blaze_dataset.__getitem__(i)
+      # image_service.show_image(sub_frame_img)
 
       # logger.info(f"img.shape: {img.shape}")
-      height, width, _ = img.shape
+      height, width, _ = sub_frame_img.shape
       # return
 
       # offset = ((height - width) // 2)
@@ -56,13 +57,13 @@ class TestBlazeFace(TestCase):
 
       # logger.info(f"img.shape: {img.shape}")
       # image_service.show_image(img)
-      image_resize = cv2.resize(img, (128, 128), interpolation=cv2.INTER_NEAREST)
+      sub_frame_image_resized = cv2.resize(sub_frame_img, (128, 128), interpolation=cv2.INTER_NEAREST)
 
       # Act
-      detections = blazeface.predict_on_image(image_resize)
-      logger.info(detections)
+      subframe_detections = blazeface.predict_on_image(sub_frame_image_resized)
+      logger.info(subframe_detections)
 
-      face_obj_list = blaze_dataset.get_face_images_in_subframe(detections, i)
+      face_obj_list = blaze_dataset.get_face_images_in_subframe(subframe_detections, i)
 
       for f in face_obj_list:
         face_image = f['image']
@@ -74,10 +75,12 @@ class TestBlazeFace(TestCase):
 
   def test_dataset_and_loader(self):
     # Arrange
-    # blaze_dataset = BlazeDataSet(0, 8)
-    batch_path = config.get_train_batch_path(0)
-    vid_path = Path(batch_path, "ambabjrwbt.mp4")
-    blaze_dataset = BlazeDataSet(vid_path=vid_path, max_process=1)
+    blaze_dataset = BlazeDataSet(2, 9)
+    # batch_path = config.get_train_batch_path(2)
+    # vid_path = Path(batch_path, "ambabjrwbt.mp4")
+    # vid_path = Path(batch_path, "aimzesksew.mp4")
+    # vid_path = Path(batch_path, "aejroilouc.mp4")
+    # blaze_dataset = BlazeDataSet(vid_path=vid_path, max_process=1)
 
     blaze_dataloader = DataLoader(blaze_dataset, batch_size=60, shuffle=False, num_workers=0)
 
@@ -86,9 +89,9 @@ class TestBlazeFace(TestCase):
     # Act
     all_video_detections = blazeface_detection.batch_detect(blaze_dataloader, blazeface)
 
-    blaze_dataset.merge_sub_frame_detections(all_video_detections)
+    merged_vid_detections = blaze_dataset.merge_sub_frame_detections(all_video_detections)
 
-    # blazeface_detection.save_cropped_blazeface_image(all_video_detections, blaze_dataset)
+    blazeface_detection.save_cropped_blazeface_image(merged_vid_detections, blaze_dataset)
 
 
 

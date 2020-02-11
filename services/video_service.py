@@ -33,7 +33,7 @@ def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0) -> (o
   return image, height, width
 
 
-def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process: int=None):
+def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process: int = None):
   cap = None
   results = []
 
@@ -43,11 +43,9 @@ def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process:
     num_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
     logger.info("About to process frames in video.")
-    count = 0
     for frame_index in range(num_frames):
-      if max_process is not None and len(results) > max_process:
+      if max_process is not None and len(results) >= max_process:
         break
-      logger.info(f"Processing frame {frame_index}.")
       success, image = cap.read()
       image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
       height, width, _ = image.shape
@@ -57,8 +55,6 @@ def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process:
         rez = fnProcess(image, height, width, frame_index)
 
       results.append(rez)
-
-
   finally:
     if cap is not None:
       cap.release()
@@ -93,6 +89,3 @@ def process_all_video_frames_with_spark(video_file_path: Path):
       cap.release()
 
   return face_data
-
-
-

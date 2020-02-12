@@ -1,3 +1,4 @@
 {
-  "TestBlazeFace.py": true
+  "TestBlazeFace.py": true,
+  "TestBlazeFaceDetection.py::TestBlazeFaceDetection::test_batch_detection": true
 }

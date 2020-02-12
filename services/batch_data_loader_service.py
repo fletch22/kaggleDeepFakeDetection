@@ -19,7 +19,7 @@ def load_batch(index: int) -> BatchData:
   df_metadata[COL_CANDIDATE] = columns
   df_metadata = df_metadata.rename(columns={'original': COL_ORIGINAL})
 
-  logger.info(df_metadata.head(10))
+  # logger.info(df_metadata.head(10))
 
   data_files = file_service.walk(config.get_train_batch_path(index))
   return BatchData(df_metadata, parent_dir_path, data_files)

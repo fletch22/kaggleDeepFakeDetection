@@ -74,10 +74,6 @@ class BlazeDataSet(Dataset):
     else:
       self.coords_map[frame_index] = sub_frame_coords
 
-    # sub_frame_coords.append(self.get_first_subframe(height, width))
-    # sub_frame_coords.append(self.get_second_subframe(height, width))
-    # sub_frame_coords.append(self.get_third_subframe(height, width))
-
     coord_info_1 = dict(frame_index=frame_index, sub_frame_coords=self.get_first_subframe(height, width))
     sub_frame_coords.append(coord_info_1)
 
@@ -88,8 +84,6 @@ class BlazeDataSet(Dataset):
     sub_frame_coords.append(coord_info_3)
 
     self.coords_list.extend(sub_frame_coords)
-
-    # return self.get_transformation_meta(sub_frame_coords, frame_index)
 
   def get_transformation_meta(self, sub_frame_coords: List[Dict], frame_index: int):
     return dict(sub_frame_coords=sub_frame_coords, frame_index=frame_index,
@@ -208,8 +202,6 @@ class BlazeDataSet(Dataset):
 
       frame_det_coords = self.convert_subframe_det_to_original_det(frame_detections, frame_index)
 
-      # logger.info(f"num: {len(frame_det_coords)}")
-
       all_frame_detections.append(self.get_unique_faces(frame_det_coords, frame_index))
 
     return all_frame_detections
@@ -221,8 +213,6 @@ class BlazeDataSet(Dataset):
       sub_frame_detections = fd['sub_frame_detections']
 
       coord_list = self.get_face_coord_on_original(sub_frame_detections, coord_index)
-
-      # logger.info(f"frame index: {frame_index}; coord_index: {coord_index}; coord_list: {coord_list}")
 
       frame_det_coords.extend(coord_list)
 
@@ -251,8 +241,6 @@ class BlazeDataSet(Dataset):
       xmin = coords['xmin']
       ymin = coords['ymin']
 
-      # logger.info(f"frame_index: {frame_index}; xmin: {xmin}; ymin: {ymin}")
-
       if len(unique_face_coords) == 0:
         unique_face_coords.append((ndx, xmin, ymin))
       else:
@@ -266,8 +254,6 @@ class BlazeDataSet(Dataset):
             is_unique = False
             break
 
-        # logger.info(f"x_diff: {x_diff}; y_diff: {y_diff}")
-        # logger.info(f"x_diff: {x_diff}; y_diff: {y_diff}")
         if is_unique:
           unique_face_coords.append((ndx, xmin, ymin))
 

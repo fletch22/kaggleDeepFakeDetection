@@ -9,7 +9,7 @@ class TestClusteringService(TestCase):
 
   def test_embeddings(self):
     # Arrange
-    face_paths = [Path(f) for f in file_service.walk(config.SMALL_HEAD_IMAGE_PATH)]
+    face_paths = [Path(f) for f in file_service.walk(config.SMALL_HEAD_OUTPUT_PATH)]
 
     # Act
     clustering_service.get_embeddings(face_paths)

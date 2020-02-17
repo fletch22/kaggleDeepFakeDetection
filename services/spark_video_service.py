@@ -22,7 +22,7 @@ def process_one_frame_with_spark(frame_info: Tuple):
 
   for head_index, fil in enumerate(face_info_landmarks):
     face_image = fil['face_image']
-    output_image_set_path = os.path.join(config.SMALL_HEAD_IMAGE_PATH, f"{video_file_path.stem}")
+    output_image_set_path = os.path.join(config.SMALL_HEAD_OUTPUT_PATH, f"{video_file_path.stem}")
     face_path = os.path.join(output_image_set_path, f"{frame_index}_{head_index}.png")
     logger.info(face_path)
 

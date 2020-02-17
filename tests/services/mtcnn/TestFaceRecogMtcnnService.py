@@ -5,7 +5,7 @@ from unittest import TestCase
 from stopwatch import Stopwatch
 
 import config
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import batch_data_loader_service
 from services.mtcnn import face_recog_mtcnn_service
 
@@ -43,7 +43,7 @@ class TestFaceRecogMtcnnService(TestCase):
   def test_mtcn_get_tiny_faces(self):
     # Arrange
     batch_data: BatchData = batch_data_loader_service.load_batch(0)
-    root_path = Path(config.SMALL_HEAD_IMAGE_PATH)
+    root_path = Path(config.SMALL_HEAD_OUTPUT_PATH)
     output_path = Path(os.path.join(config.TINY_IMAGE_PATH))
 
     # Act

@@ -5,7 +5,7 @@ from cv2 import cv2, os
 from mtcnn.mtcnn import MTCNN
 
 import config
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import file_service, image_service, face_recog_service, video_service
 
 logger = config.create_logger(__name__)
@@ -90,7 +90,7 @@ def process_face(face, frame_index, head_index, image, total_image_height, total
 
 
 def get_small_head_dirpath(video_path: Path):
-  return os.path.join(config.SMALL_HEAD_IMAGE_PATH, f"{video_path.stem}")
+  return os.path.join(config.SMALL_HEAD_OUTPUT_PATH, f"{video_path.stem}")
 
 
 def chunk_video_list(video_info_list):
@@ -143,7 +143,7 @@ def find_face_one_at_time(video_info: Dict):
       # You can access the actual face itself like this:
       face_image = image[top:bottom, left:right]
       # image_service.show_image(face_image, f"Frame {frame_index}, head {ndx}.")
-      face_path = os.path.join(config.SMALL_HEAD_IMAGE_PATH, f"{video_path.name}_{frame_index}_{index}.jpg")
+      face_path = os.path.join(config.SMALL_HEAD_OUTPUT_PATH, f"{video_path.name}_{frame_index}_{index}.jpg")
       # face_image_converted = cv2.cvtColor(face_image, cv2.COLOR_BGR2RGB)
       cv2.imwrite(face_path, face_image)
       face_path_list.append(face_path)

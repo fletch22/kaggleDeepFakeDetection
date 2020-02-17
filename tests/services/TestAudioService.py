@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest import TestCase
 
 import config
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import audio_service, batch_data_loader_service
 
 logger = config.create_logger(__name__)

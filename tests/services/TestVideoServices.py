@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest import TestCase
 
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import video_service, batch_data_loader_service
 from services.image_service import show_image
 

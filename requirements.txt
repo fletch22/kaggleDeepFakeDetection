@@ -18,3 +18,4 @@ scikit-image==0.16.2
 moviepy==1.0.1
 librosa==0.7.2
 fastai==1.0.59
+# pyarrow==0.16.0

@@ -4,12 +4,11 @@ from typing import List, Dict
 from unittest import TestCase
 
 from cv2 import cv2
-from pandas import DataFrame
 from stopwatch import Stopwatch
 
 import config
-from BatchData import BatchData
-from services import face_recog_service, batch_data_loader_service, video_service, image_service, file_service
+from util.BatchData import BatchData
+from services import face_recog_service, batch_data_loader_service, video_service, image_service
 
 logger = config.create_logger(__name__)
 

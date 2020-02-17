@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from cv2 import cv2
 from torch.utils.data.dataloader import DataLoader
@@ -6,30 +7,26 @@ from torch.utils.data.dataloader import DataLoader
 import config
 from services import file_service
 from util.BlazeDataSet import BlazeDataSet
+from util.FaceDetection import FaceDetection
 from util.blazeface import BlazeFace
 
 logger = config.create_logger(__name__)
 
 
-def batch_detect(blaze_dataloader, blazeface):
+def batch_detect(blaze_dataloader, blazeface: BlazeFace):
   logger.info("About to batch detect in all subframes.")
   all_video_detections = []
   for i_batch, sample_batched in enumerate(blaze_dataloader):
     # Change batch to include all 3 cropped images.
     h = blazeface.predict_on_batch(sample_batched.detach().numpy())
 
-    # # Necessary for PyTorch tensor processing
     faces = [item.detach().cpu().numpy() for item in h]
     all_video_detections.extend(faces)
-
-    # If no face is found the PyTorch tensor returned has shape [0, 17], otherwise [1, 17]
-    # num_faces = np.sum([f.shape[0] for f in faces])
-    # logger.info(f"Number of faces found: {num_faces}")
 
   return all_video_detections
 
 
-def save_cropped_blazeface_image(all_video_detections, blaze_dataset: BlazeDataSet):
+def save_cropped_blazeface_image(all_video_detections, blaze_dataset: BlazeDataSet, output_path: Path):
   logger.info(f"Saving cropped faces from video.")
   for detections in all_video_detections:
 
@@ -48,7 +45,7 @@ def save_cropped_blazeface_image(all_video_detections, blaze_dataset: BlazeDataS
       xmax_pad, xmin_pad, ymax_pad, ymin_pad = blaze_dataset.pad_face_crop(xmax, xmin, ymax, ymin, height_orig, width_orig)
       image_orig_cropped_face = image_orig[ymin_pad:ymax_pad, xmin_pad:xmax_pad]
 
-      output_image_set_path = Path(config.SMALL_HEAD_IMAGE_PATH, f"{vid_path.stem}")
+      output_image_set_path = Path(output_path, f"{vid_path.stem}")
       if not output_image_set_path.exists():
         output_image_set_path.mkdir()
       face_path = Path(output_image_set_path, f"{frame_index}_{head_ndx}.png")
@@ -62,42 +59,46 @@ def save_cropped_blazeface_image(all_video_detections, blaze_dataset: BlazeDataS
       cv2.imwrite(str(face_path), image_converted)
 
 
-def multi_batch_detection():
-  logger.info("Starting multi batch detection...")
+def get_video_paths(parent_folder_paths: List[str]):
+  video_paths = []
+  for par_path in parent_folder_paths:
+    files = file_service.walk_to_path(par_path, filename_endswith=".mp4")
+    video_paths.extend(files)
 
-  for batch_index in range(8):
-    train_path = config.get_train_batch_path(batch_index)
-    files = file_service.walk(train_path)
-    filtered_files = filter(lambda x: x.endswith(".mp4"), files)
+  return video_paths
 
-    for file_index, f in enumerate(filtered_files):
-      logger.info(f"fi: {file_index}; batch_index: {batch_index}")
 
-      output_path = Path(config.SMALL_HEAD_IMAGE_PATH, Path(f).stem)
-      if output_path.exists():
-        logger.info(f"Output folder {output_path.stem} already exists. Skipping.")
-        continue
+def multi_batch_detection(video_paths: List[Path], max_rows_to_process: int = None, output_parent_path: Path = None):
+  blazeface = BlazeFace()
 
-      # logger.info(f"of: {output_path}")
-      # raise Exception("foo")
+  face_det = FaceDetection(output_parent_path=output_parent_path)
 
-      blaze_dataset = BlazeDataSet(batch_index, file_index)
-      # batch_path = config.get_train_batch_path(2)
-      # vid_path = Path(batch_path, "ambabjrwbt.mp4")
-      # vid_path = Path(batch_path, "aimzesksew.mp4")
-      # vid_path = Path(batch_path, "aejroilouc.mp4")
-      # blaze_dataset = BlazeDataSet(vid_path=vid_path, max_process=1)
+  row_count = 1
+  for vp in video_paths:
+    blaze_dataset = BlazeDataSet(vp)
 
-      blaze_dataloader = DataLoader(blaze_dataset, batch_size=60, shuffle=False, num_workers=0)
+    if len(blaze_dataset.originals) == 0:
+      logger.info(f"No data in {blaze_dataset.vid_path}")
+      continue
 
-      blazeface = BlazeFace()
+    blaze_dataloader = DataLoader(blaze_dataset, batch_size=300, shuffle=False, num_workers=0)
 
-      all_video_detections = batch_detect(blaze_dataloader, blazeface)
+    all_video_detections = batch_detect(blaze_dataloader, blazeface)
 
-      merged_vid_detections = blaze_dataset.merge_sub_frame_detections(all_video_detections)
+    merged_vid_detections = blaze_dataset.merge_sub_frame_detections(all_video_detections)
 
-      save_cropped_blazeface_image(merged_vid_detections, blaze_dataset)
+    # save_cropped_blazeface_image(merged_vid_detections, blaze_dataset, output_folder_path)
+    face_det.add_row(vp, merged_vid_detections)
+    face_det.persist()
+
+    if max_rows_to_process is not None and row_count >= max_rows_to_process:
+      break
+    row_count += 1
 
 
 if __name__ == '__main__':
-  multi_batch_detection()
+  output_parent_path = config.FACE_DET_PAR_PATH
+  parent_folder_paths = [config.TRAIN_PARENT_PATH_C, config.TRAIN_PARENT_PATH_D]
+  video_paths = FaceDetection.get_video_paths(parent_folder_paths=parent_folder_paths, output_parent_path=output_parent_path)
+
+  multi_batch_detection(video_paths=video_paths, output_parent_path=output_parent_path)

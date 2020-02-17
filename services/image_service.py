@@ -3,7 +3,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 import config
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import batch_data_loader_service, video_service
 
 logger = config.create_logger(__name__)

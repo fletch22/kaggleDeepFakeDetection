@@ -1,25 +1,35 @@
+from pathlib import Path
+
 import pandas as pd
 
 import config
-from BatchData import BatchData, COL_CANDIDATE, COL_ORIGINAL
+from util.BatchData import BatchData, COL_CANDIDATE, COL_ORIGINAL, COL_VID_PATH
 from services import file_service
-from pathlib import Path
 
 logger = config.create_logger(__name__)
 
+
 def load_batch(index: int) -> BatchData:
   metadata_file_path = file_service.get_metadata_path_from_batch(index)
-  parent_dir_path: Path = Path(metadata_file_path).parent
 
   df_metadata = pd.read_json(metadata_file_path)
-
   columns = df_metadata.columns
 
   df_metadata = df_metadata.T
   df_metadata[COL_CANDIDATE] = columns
   df_metadata = df_metadata.rename(columns={'original': COL_ORIGINAL})
 
-  # logger.info(df_metadata.head(10))
+  filePathDict = file_service.get_files_as_dict(Path(config.TRAIN_PARENT_PATH_D), ".mp4")
 
-  data_files = file_service.walk(config.get_train_batch_path(index))
-  return BatchData(df_metadata, parent_dir_path, data_files)
+  def add_path(row):
+    result = None
+    filename = row[COL_CANDIDATE]
+    if filename in filePathDict.keys():
+      result = filePathDict[filename]
+    return result
+
+  df_metadata[COL_VID_PATH] = df_metadata.apply(add_path, axis=1)
+
+  df_metadata = df_metadata[~df_metadata[COL_VID_PATH].isnull()]
+
+  return BatchData(df_metadata)

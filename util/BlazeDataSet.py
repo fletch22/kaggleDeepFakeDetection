@@ -6,31 +6,28 @@ from cv2 import cv2
 from torch.utils.data import Dataset
 
 import config
-from BatchData import BatchData
-from services import batch_data_loader_service, video_service
+from services import video_service
 
 logger = config.create_logger(__name__)
 
 
 class BlazeDataSet(Dataset):
-  originals = []
-  coords_map = {}
-  coords_list = []
 
-  def __init__(self, batch_index: int = None, vid_index: int = None, max_process=None, vid_path: Path = None):
+  def __init__(self, vid_path: Path, max_process=None):
     self.resize_height = 128
     self.resize_width = 128
 
+    self.coords_list = []
+    self.originals = []
+    self.coords_map = {}
+
     if vid_path is None:
-      batch_data: BatchData = batch_data_loader_service.load_batch(batch_index)
-      self.vid_path: Path = batch_data.get_candidate_file_path(vid_index)
-    else:
-      self.vid_path = vid_path
+      raise Exception(f"Vid_path cannot be None. ")
 
-    logger.info(f"Getting {self.vid_path.name}.")
+    self.vid_path = vid_path
 
-    # self.image_metas = video_service.process_all_video_frames(self.vid_path, self.get_image_meta, max_process)
     video_service.process_all_video_frames(self.vid_path, self.get_image_meta, max_process)
+
 
   def __len__(self):
     return len(self.coords_list)
@@ -39,13 +36,6 @@ class BlazeDataSet(Dataset):
     sub_frame_info = self.coords_list[sub_frame_index]
     frame_index = sub_frame_info['frame_index']
     image_original = self.originals[frame_index]
-    # image_info = self.image_metas[frame_index]
-
-    # sub_frame_coords_list = image_info['sub_frame_coords']
-    # sub_frame_images = []
-    # for sub_frame_coords in sub_frame_coords_list:
-    #   sub_frame_images.append(self.get_subframe(image_original, sub_frame_coords=sub_frame_coords, frame_index=frame_index))
-    # return sub_frame_images
 
     return self.get_subframe_image(image_original, sub_frame_coords=sub_frame_info['sub_frame_coords'], frame_index=frame_index)
 
@@ -64,9 +54,6 @@ class BlazeDataSet(Dataset):
 
   def get_image_meta(self, image: np.ndarray, height: int, width: int, frame_index: int):
     self.originals.append(image)
-
-    # Get 3 subframes: 1st position, 2nd pos., 3rd pos.
-    sub_frame_coords = []
 
     sub_frame_coords = []
     if frame_index in self.coords_map.keys():
@@ -140,8 +127,6 @@ class BlazeDataSet(Dataset):
     o_xmin = sub_frame_coords['xmin']
     o_xmax = sub_frame_coords['xmax']
 
-    # logger.info(f"El 0: {detections_in_frame}: video_path: {str(vid_path)}; frame_index: {frame_index}")
-
     image_faces_found = []
     for face in detections_in_sub_frame:
       if face.shape[0] == 0:
@@ -191,7 +176,7 @@ class BlazeDataSet(Dataset):
 
     return x_max, x_min, y_max, y_min
 
-  def merge_sub_frame_detections(self, all_detections: List) -> List[List]:
+  def merge_sub_frame_detections(self, all_detections: List) -> List[List[Dict]]:
     logger.info(f"About to get unique faces in subframes.")
 
     det_map = self.convert_subframe_det_to_map(all_detections)

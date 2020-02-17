@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import cv2 as cv
 from cv2 import cv2
@@ -61,6 +62,33 @@ def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process:
 
   return results
 
+def process_specific_video_frames(video_file_path: Path, frames: List[str], fnProcess=None, max_process: int = None):
+  cap = None
+  results = []
+
+  logger.info("About to get video.")
+  try:
+    cap = get_video_capture(video_file_path)
+    num_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+
+    logger.info("About to process frames in video.")
+    for frame_index in frames:
+      if max_process is not None and len(results) >= max_process:
+        break
+      success, image = cap.read()
+      image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+      height, width, _ = image.shape
+
+      rez = image, height, width, frame_index, video_file_path
+      if fnProcess is not None:
+        rez = fnProcess(image, height, width, frame_index)
+
+      results.append(rez)
+  finally:
+    if cap is not None:
+      cap.release()
+
+  return results
 
 def get_num_frames(video_file_path: Path) -> int:
   v_cap = None
@@ -89,3 +117,4 @@ def process_all_video_frames_with_spark(video_file_path: Path):
       cap.release()
 
   return face_data
+

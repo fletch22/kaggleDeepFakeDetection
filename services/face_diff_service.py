@@ -6,7 +6,7 @@ from pandas import DataFrame
 from tensorflow_core.python.ops.image_ops_impl import ssim
 
 import config
-from BatchData import BatchData
+from util.BatchData import BatchData
 from services import file_service, image_service
 
 
@@ -15,7 +15,7 @@ def get_face_diffs(batch_data: BatchData, max_diffs: int = 1):
 
   df_fakes = df[df['label'] == 'FAKE']
 
-  small_dir_path = config.SMALL_HEAD_IMAGE_PATH
+  small_dir_path = config.SMALL_HEAD_OUTPUT_PATH
 
   diffs = []
   for ndx, row in df_fakes.iterrows():

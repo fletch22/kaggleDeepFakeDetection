@@ -25,13 +25,19 @@ class TestFindDiffSwatch(TestCase):
     #
     # batch_data_one = BatchData(df_one)
 
-    max_process = 1
+    max_process = 10
 
     # Act
     diffs = find_diff_swatch.get_diffs(batch_data, max_process)
 
     # Assert
 
-def find_diff(image, height, width, frame_index):
+  def test_shoeme(self):
+    batch_data = batch_data_loader_service.load_batch(0)
 
-  pass
+    candi_list = batch_data.df_metadata[COL_CANDIDATE].tolist()
+
+    for ndx, row in batch_data.df_metadata.iterrows():
+      path = Path(row[COL_VID_PATH])
+      if not path.exists():
+        raise Exception("foo")

@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import imutils
+import skimage
 from cv2 import cv2
 from skimage.measure import compare_ssim
+from skimage.metrics import structural_similarity
 
 import config
 from services import video_service, image_service
@@ -43,6 +45,8 @@ def get_diffs(batch_data: BatchData, max_diffs: int = 1):
       o_height, o_width, _ = image_real.shape
       f_height, f_width, _ = image_fake.shape
 
+      image_service.show_image(image_real, "Original")
+
       if f_height * f_width > o_height * o_width:
         image_real = cv2.resize(image_real, (f_width, f_height), interpolation=cv2.INTER_NEAREST)
       elif o_height * o_width > f_height * f_width:
@@ -78,7 +82,7 @@ def get_contour_ssim(image_fake, image_real):
   gray_real = cv2.cvtColor(image_real, cv2.COLOR_BGR2GRAY)
   gray_fake = cv2.cvtColor(image_fake, cv2.COLOR_BGR2GRAY)
 
-  (score, diff_image) = compare_ssim(gray_real, gray_fake, full=True)
+  (score, diff_image) = structural_similarity(gray_real, gray_fake, full=True)
 
   diff_image = (diff_image * 255).astype("uint8")
 
@@ -90,17 +94,18 @@ def get_contour_ssim(image_fake, image_real):
   max_val = 220
 
   # https://www.pyimagesearch.com/2014/09/29/finding-brightest-spot-image-using-python-opencv/
-  raise Exception("Add Guassian blur to get better results?")
+  # raise Exception("Add Guassian blur to get better results?")
 
-  (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(diff_image)
-  cv2.circle(image_real, minLoc, 5, (255, 0, 0), 20)
-
-  # image_real, image_fake = threshholding(diff_image, image_real, image_fake, max_val, thresh)
+  diff_image_blur = cv2.GaussianBlur(diff_image, (19, 19), 0)
+  (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(diff_image_blur)
+  cv2.circle(image_real, minLoc, 5, (255, 0, 0), 100)
 
   image_service.show_image(image_real, "Original")
   # image_service.show_image(image_fake, "Modified")
   image_service.show_image(diff_image, "Diff")
-  # image_service.show_image(thresh, "Thresh")
+
+  # image_real, image_fake = threshholding(diff_image, image_real, image_fake, max_val, thresh)
+
 
 
 def threshholding(diff_image, image_real, image_fake, max_val, thresh):
@@ -121,5 +126,10 @@ def threshholding(diff_image, image_real, image_fake, max_val, thresh):
     (x, y, w, h) = tuple_rect
     cv2.rectangle(image_real, (x, y), (x + w, y + h), (0, 0, 255), 2)
     # cv2.rectangle(image_fake, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+  image_service.show_image(image_real, "Original")
+  image_service.show_image(image_fake, "Modified")
+  image_service.show_image(diff_image, "Diff")
+  image_service.show_image(thresh, "Thresh")
 
   return image_real, image_fake

@@ -14,7 +14,7 @@ class TestFindDiffSwatch(TestCase):
 
   def test_spot_diff(self):
     # Arrange
-    batch_data = batch_data_loader_service.load_batch(0)
+    batch_data = batch_data_loader_service.load_batch(3)
 
     df = batch_data.df_metadata
 

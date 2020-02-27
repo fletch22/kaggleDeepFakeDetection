@@ -1,0 +1,1 @@
+python -m pytest tests\diff\TestFindDiffSwatch.py::TestFindDiffSwatch::test_spot_diff -s

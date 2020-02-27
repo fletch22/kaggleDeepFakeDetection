@@ -14,21 +14,13 @@ class TestFindDiffSwatch(TestCase):
 
   def test_spot_diff(self):
     # Arrange
+    output_path = Path(config.SSIM_DIFFS_OUTPUT_PATH, 'ssim_diffs.pkl')
     batch_data = batch_data_loader_service.load_batch(3)
 
-    df = batch_data.df_metadata
-
-    # logger.info(pd_util.head(df))
-
-    # file_to_find = "acdkfksyev.mp4"
-    # df_one = df[df[COL_CANDIDATE] == file_to_find]
-    #
-    # batch_data_one = BatchData(df_one)
-
-    max_process = 10
+    max_process = None
 
     # Act
-    diffs = find_diff_swatch.get_diffs(batch_data, max_process)
+    diffs = find_diff_swatch.get_diffs(batch_data, output_path, max_process)
 
     # Assert
 

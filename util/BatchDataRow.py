@@ -15,3 +15,5 @@ class BatchDataRow():
     self.original_filename = row[COL_ORIGINAL]
     self.video_path = row[COL_VID_PATH]
     self.split = row[COL_SPLIT]
+
+

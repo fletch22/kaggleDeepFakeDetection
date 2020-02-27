@@ -6,6 +6,7 @@ from torch.utils.data.dataloader import DataLoader
 
 import config
 from services import file_service
+from util.BlazeBrightSideDataSet import BlazeBrightSideDataSet
 from util.BlazeDataSet import BlazeDataSet
 from util.FaceDetection import FaceDetection
 from util.blazeface import BlazeFace
@@ -13,7 +14,7 @@ from util.blazeface import BlazeFace
 logger = config.create_logger(__name__)
 
 
-def batch_detect(blaze_dataloader, blazeface: BlazeFace):
+def batch_detect(blaze_dataloader: DataLoader, blazeface: BlazeFace):
   logger.info("About to batch detect in all subframes.")
   all_video_detections = []
   for i_batch, sample_batched in enumerate(blaze_dataloader):
@@ -94,6 +95,52 @@ def multi_batch_detection(video_paths: List[Path], max_rows_to_process: int = No
     if max_rows_to_process is not None and row_count >= max_rows_to_process:
       break
     row_count += 1
+
+def multi_batch_detection_2(video_paths: List[Path], max_rows_to_process: int = None, output_parent_path: Path = None):
+  blazeface = BlazeFace()
+
+  # face_det = FaceDetection(output_parent_path=output_parent_path)
+
+  row_count = 1
+  merged_vid_detections = None
+  for vp in video_paths:
+    blaze_bright = BlazeBrightSideDataSet(vp)
+
+    if blaze_bright.__len__() == 0:
+      logger.info(f"No data in {blaze_bright.vid_path}")
+      continue
+
+    blaze_dataloader = DataLoader(blaze_bright, batch_size=300, shuffle=False, num_workers=0)
+
+    frame_index = 0
+    first_sub_images_info = blaze_bright.get_subframe_images_info(frame_index)
+
+    frame_detections = []
+    for image_info in first_sub_images_info:
+      image = image_info['image']
+      det = blazeface.predict_on_image(image)
+      face_dets = [item.detach().cpu().numpy() for item in det]
+      frame_detections.append(dict(image_info=image_info, face_detections=face_dets, frame_index=frame_index))
+
+    merged_vid_detections = blaze_bright.merge_sub_frame_detections(frame_detections)
+
+    # logger.info(f"merged_vid_detections: {merged_vid_detections}")
+    # frame_det_coords = blaze_bright.convert_subframe_det_to_original_det(frame_detections, frame_index)
+
+    logger.info(merged_vid_detections)
+
+    all_video_detections = batch_detect(blaze_dataloader, blazeface)
+
+    return merged_vid_detections
+
+
+  return merged_vid_detections
+    #
+    # # save_cropped_blazeface_image(merged_vid_detections, blaze_dataset, output_folder_path)
+    # face_det.add_row(vp, merged_vid_detections)
+    # face_det.persist()
+
+
 
 
 if __name__ == '__main__':

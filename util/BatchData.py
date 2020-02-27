@@ -49,8 +49,6 @@ class BatchData():
     return Path(self.df_metadata.iloc[index][COL_VID_PATH])
 
   def get_vid_path(self, candidate_filename: str):
-    logger.info(candidate_filename)
-
     df_filtered = self.df_metadata[self.df_metadata[COL_CANDIDATE] == candidate_filename]
     if df_filtered.shape[0] == 0:
       raise Exception("Could not find candidate.")

@@ -23,6 +23,12 @@ OUTPUT_PATH = os.path.join(KAGGLE_DATA_PATH_D, "output")
 SMALL_HEAD_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "small_heads")
 os.makedirs(SMALL_HEAD_OUTPUT_PATH, exist_ok=True)
 
+SSIM_DIFFS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "ssim_diffs")
+os.makedirs(SSIM_DIFFS_OUTPUT_PATH, exist_ok=True)
+
+SSIM_RND_DIFFS_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "ssim_rnd_diffs")
+os.makedirs(SSIM_RND_DIFFS_OUTPUT_PATH, exist_ok=True)
+
 FACE_DET_PAR_PATH = Path(OUTPUT_PATH, "face_detections")
 os.makedirs(FACE_DET_PAR_PATH, exist_ok=True)
 

@@ -1,5 +1,5 @@
 import findspark
-from pyspark import SparkContext
+from pyspark import SparkContext, MarshalSerializer
 
 import config
 

@@ -1,81 +1,121 @@
 from pathlib import Path
+from typing import Dict, List
 
 import imutils
-import skimage
+import pandas as pd
 from cv2 import cv2
-from skimage.measure import compare_ssim
 from skimage.metrics import structural_similarity
 
 import config
-from services import video_service, image_service
+from services import video_service, image_service, spark_service
 from util.BatchData import BatchData
+from util.BatchDataRow import BatchDataRow
 
 logger = config.create_logger(__name__)
 
 
-def get_diffs(batch_data: BatchData, max_diffs: int = 1):
-  fakes_list = BatchData.convert(batch_data.get_fakes())
+def chunks(lst, n):
+  """Yield successive n-sized chunks from lst."""
+  for i in range(0, len(lst), n):
+    yield lst[i:i + n]
 
-  diffs = []
-  for ndx, batch_row_data in enumerate(fakes_list):
-    if len(diffs) >= max_diffs:
-      break
 
-    logger.info(f"vid_path: {batch_row_data.video_path}")
+def get_diffs(batch_data: BatchData, output_path: Path, max_diffs: int = None) -> List:
+  fakes_list: List[BatchDataRow] = BatchData.convert(batch_data.get_fakes())
 
+  processed_fakes = get_processed_vids(output_path)
+
+  fakes_filterd = [f for f in fakes_list if f.filename not in processed_fakes]
+
+  logger.info(f"unfiltered: {len(fakes_list)}")
+  logger.info(f"filtered: {len(fakes_filterd)}")
+
+  ssim_list = []
+  for ndx, batch_row_data in enumerate(fakes_filterd):
     original_filename = batch_row_data.original_filename
-    vid_path_fake: Path = batch_row_data.video_path
 
+    vid_path_fake: Path = batch_row_data.video_path
     vid_path_real = batch_data.get_vid_path(original_filename)
 
-    fake_frame_infos = video_service.process_all_video_frames(vid_path_fake, max_process=max_diffs)
-    real_frame_infos = video_service.process_all_video_frames(vid_path_real, max_process=max_diffs)
-
-    vid = {
-      batch_row_data.filename: []
+    ssim_data = {
+      'vid_path_real': vid_path_real,
+      'vid_path_fake': vid_path_fake
     }
-    diffs.append(vid)
+    ssim_list.append(ssim_data)
 
-    for image_fake_info in fake_frame_infos:
-      image_fake, _, _, ndx, _ = image_fake_info
+  fakes_chunked = chunks(ssim_list, 4)
+  chunked_list = list(fakes_chunked)
 
-      image_real_info = real_frame_infos[ndx]
-      image_real, _, _, _, _ = image_real_info
+  all_diffs = []
+  for c in chunked_list:
+    # vid_diffs = spark_service.execute(c, spark_process_diff, num_slices=2)
 
-      o_height, o_width, _ = image_real.shape
-      f_height, f_width, _ = image_fake.shape
+    vid_diffs = []
+    for d in c:
+      diff = process_diff(d)
+      vid_diffs.append(diff)
 
-      image_service.show_image(image_real, "Original")
+    persist(vid_diffs, output_path)
+    all_diffs.extend(vid_diffs)
 
-      if f_height * f_width > o_height * o_width:
-        image_real = cv2.resize(image_real, (f_width, f_height), interpolation=cv2.INTER_NEAREST)
-      elif o_height * o_width > f_height * f_width:
-        image_fake = cv2.resize(image_fake, (o_width, o_height), interpolation=cv2.INTER_NEAREST)
+  return all_diffs
 
-      image_rectangle_diffs = get_contour_ssim(image_fake, image_real)
-      vid[batch_row_data.filename].append({
-        'frame_index': ndx,
-        'rect_diffs': image_rectangle_diffs
-      })
 
-      # image_real = tf.convert_to_tensor(image_real)
-      # image_fake = tf.convert_to_tensor(image_fake)
-      # ssim_results: tf.Tensor = ssim(image_real, image_fake, max_val=255)
-      # vid[batch_row_data.filename].append({
-      #   'frame_index': ndx,
-      #   'ssim': ssim_results
-      # })
+def process_diff(data: Dict):
+  vid_path_real = data['vid_path_real']
+  vid_path_fake: Path = data['vid_path_fake']
 
-  # sess = tf.Session()
-  # with sess.as_default():
-  #   for vid in diffs:
-  #     for key in vid.keys():
-  #       ssim_arr = vid[key]
-  #       for ssim_dict in ssim_arr:
-  #         ssim_dict['ssimEval'] = ssim_dict['ssim'].eval()
-  #         logger.info(f"ssim_dict: {ssim_dict['ssimEval']}")
+  fake_frame_infos = video_service.process_all_video_frames(vid_path_fake, max_process=None)
+  real_frame_infos = video_service.process_all_video_frames(vid_path_real, max_process=None)
 
-  return diffs
+  diffs = get_all_vid_hotspots(fake_frame_infos, real_frame_infos)
+  return {
+    'vid_path_fake': vid_path_fake,
+    'diffs': diffs,
+  }
+
+
+def persist(diffs: List[Dict], output_path: Path):
+  output_path_str = str(output_path)
+  if output_path.exists():
+    df = pd.read_pickle(output_path_str)
+  else:
+    df = pd.DataFrame(columns=['fake_filename', 'path', 'diffs'])
+
+  for d in diffs:
+    vp: Path = d['vid_path_fake']
+    df = df.append({'fake_filename': vp.name, 'path': str(vp), 'diffs': d['diffs']}, ignore_index=True)
+
+  df.to_pickle(output_path_str)
+
+def get_processed_vids(output_path: Path):
+  output_path_str = str(output_path)
+  df = pd.read_pickle(output_path_str)
+
+  return df['fake_filename'].tolist()
+
+def get_all_vid_hotspots(fake_frame_infos, real_frame_infos):
+  frame_diff_hotspots = []
+  for image_fake_info in fake_frame_infos:
+    image_fake, _, _, ndx, _ = image_fake_info
+
+    image_real_info = real_frame_infos[ndx]
+    image_real, _, _, _, _ = image_real_info
+
+    o_height, o_width, _ = image_real.shape
+    f_height, f_width, _ = image_fake.shape
+
+    if f_height * f_width > o_height * o_width:
+      image_real = cv2.resize(image_real, (f_width, f_height), interpolation=cv2.INTER_NEAREST)
+    elif o_height * o_width > f_height * f_width:
+      image_fake = cv2.resize(image_fake, (o_width, o_height), interpolation=cv2.INTER_NEAREST)
+
+    x_diff, y_diff = get_contour_ssim(image_fake, image_real)
+    frame_diff_hotspots.append({
+      'frame_index': ndx,
+      'diff_location': {'x': x_diff, 'y': y_diff}
+    })
+  return frame_diff_hotspots
 
 
 def get_contour_ssim(image_fake, image_real):
@@ -88,24 +128,12 @@ def get_contour_ssim(image_fake, image_real):
 
   print("SSIM: {}".format(score))
 
-  # threshold the difference image, followed by finding contours to
-  # obtain the regions of the two input images that differ
-  thresh = 0
-  max_val = 220
-
   # https://www.pyimagesearch.com/2014/09/29/finding-brightest-spot-image-using-python-opencv/
-  # raise Exception("Add Guassian blur to get better results?")
-
   diff_image_blur = cv2.GaussianBlur(diff_image, (19, 19), 0)
   (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(diff_image_blur)
-  cv2.circle(image_real, minLoc, 5, (255, 0, 0), 100)
 
-  image_service.show_image(image_real, "Original")
-  # image_service.show_image(image_fake, "Modified")
-  image_service.show_image(diff_image, "Diff")
-
-  # image_real, image_fake = threshholding(diff_image, image_real, image_fake, max_val, thresh)
-
+  x, y = minLoc
+  return x, y
 
 
 def threshholding(diff_image, image_real, image_fake, max_val, thresh):

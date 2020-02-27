@@ -28,9 +28,6 @@ def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0) -> (o
     if cap is not None:
       cap.release()
 
-  # matplotlib.use('TkAgg')
-  # plt.interactive(False)
-
   return image, height, width
 
 

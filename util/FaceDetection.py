@@ -37,7 +37,7 @@ class FaceDetection():
       self.initialize()
 
   def get_new_output_path(self):
-    output_path = Path(self.output_parent_path, f"face_detection_{random_util.randomStringDigits(6)}.pkl")
+    output_path = Path(self.output_parent_path, f"face_detection_{random_util.random_string_digits(6)}.pkl")
     if not self.is_valid_path(output_path):
       output_path = self.get_new_output_path()
 
@@ -62,6 +62,7 @@ class FaceDetection():
   @staticmethod
   def get_video_paths(parent_folder_paths: List[str], output_parent_path: Path):
     video_paths = FaceDetection.get_unfiltered_video_paths(parent_folder_paths)
+
     df_iterator: FaceDetectionIterator = FaceDetection.get_dataframes_iterator(output_parent_path=output_parent_path)
     proc_vid_path_strs = []
     for df in df_iterator:

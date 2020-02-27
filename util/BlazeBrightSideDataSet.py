@@ -11,7 +11,7 @@ from services import video_service
 logger = config.create_logger(__name__)
 
 
-class BlazeDataSet(Dataset):
+class BlazeBrightSideDataSet(Dataset):
 
   def __init__(self, vid_path: Path, max_process=None):
     self.resize_height = 128
@@ -20,6 +20,7 @@ class BlazeDataSet(Dataset):
     self.coords_list = []
     self.originals = []
     self.coords_map = {}
+    self.original_frame_info = {}
 
     if vid_path is None:
       raise Exception(f"Vid_path cannot be None. ")
@@ -28,53 +29,53 @@ class BlazeDataSet(Dataset):
 
     video_service.process_all_video_frames(self.vid_path, self.get_image_meta, max_process)
 
+  def get_image_meta(self, image, height, width, frame_index):
+    frame = {
+      "image": image,
+      "last_heads_locs": []
+    }
+
+    self.original_frame_info[frame_index] = frame
+
   def __len__(self):
-    return len(self.coords_list)
+    return len(self.original_frame_info.keys())
 
-  def __getitem__(self, sub_frame_index) -> np.ndarray:
-    sub_frame_info = self.coords_list[sub_frame_index]
-    frame_index = sub_frame_info['frame_index']
-    image_original = self.originals[frame_index]
+  def __getitem__(self, frame_index) -> Dict:
+    return self.original_frame_info[frame_index]
 
-    return self.get_subframe_image(image_original, sub_frame_coords=sub_frame_info['sub_frame_coords'], frame_index=frame_index)
+  def get_subframe_images_info(self, frame_index: int):
+    frame = self.original_frame_info[frame_index]
+    image = frame['image']
+    height = image.shape[0]
+    width = image.shape[1]
 
-  def get_subframe_image(self, image_original: np.ndarray, sub_frame_coords: Dict, frame_index: int) -> np.ndarray:
+    sub_frame_coords = self.get_sub_frame_coords(height, width)
+
+    image_list = []
+    for coords in sub_frame_coords:
+       image_list.append(self.get_resized_image_and_coords(image, coords))
+
+    return image_list
+
+  def get_resized_image_and_coords(self, image: np.ndarray, sub_frame_coords: Dict) -> Dict:
     ymin = sub_frame_coords['ymin']
     ymax = sub_frame_coords['ymax']
     xmin = sub_frame_coords['xmin']
     xmax = sub_frame_coords['xmax']
-    image_cropped = image_original[ymin:ymax, xmin:xmax]
+    image_cropped = image[ymin:ymax, xmin:xmax]
 
     img_resized = cv2.resize(image_cropped, (self.resize_height, self.resize_width), interpolation=cv2.INTER_AREA)
-    # sub_frame_info = dict(image=img_resized, sub_frame_coords=sub_frame_coords, frame_index=frame_index, resize_dim=(self.resize_height, self.resize_width))
-    # return sub_frame_info
 
-    return img_resized
+    return dict(image=img_resized, sub_frame_coords=sub_frame_coords, resize_dim=(self.resize_height, self.resize_width))
 
-  def get_image_meta(self, image: np.ndarray, height: int, width: int, frame_index: int):
-    self.originals.append(image)
-
+  def get_sub_frame_coords(self, height: int, width: int):
     sub_frame_coords = []
-    if frame_index in self.coords_map.keys():
-      sub_frame_coords = self.coords_map[frame_index]
-    else:
-      self.coords_map[frame_index] = sub_frame_coords
 
-    coord_info_1 = dict(frame_index=frame_index, sub_frame_coords=self.get_first_subframe(height, width))
-    sub_frame_coords.append(coord_info_1)
+    sub_frame_coords.append(self.get_first_subframe(height, width))
+    sub_frame_coords.append(self.get_second_subframe(height, width))
+    sub_frame_coords.append(self.get_third_subframe(height, width))
 
-    coord_info_2 = dict(frame_index=frame_index, sub_frame_coords=self.get_second_subframe(height, width))
-    sub_frame_coords.append(coord_info_2)
-
-    coord_info_3 = dict(frame_index=frame_index, sub_frame_coords=self.get_third_subframe(height, width))
-    sub_frame_coords.append(coord_info_3)
-
-    self.coords_list.extend(sub_frame_coords)
-
-  def get_transformation_meta(self, sub_frame_coords: List[Dict], frame_index: int):
-    return dict(sub_frame_coords=sub_frame_coords, frame_index=frame_index,
-                video_path=self.vid_path,
-                resize_dim=(self.resize_height, self.resize_width))
+    return sub_frame_coords
 
   def get_first_subframe(self, height, width) -> Dict:
     if width > height:
@@ -175,28 +176,35 @@ class BlazeDataSet(Dataset):
 
     return x_max, x_min, y_max, y_min
 
-  def merge_sub_frame_detections(self, all_detections: List) -> List[List[Dict]]:
-    logger.info(f"About to get unique faces in subframes.")
+  def merge_sub_frame_detections(self, image_info_detections: List) -> List[dict]:
 
-    det_map = self.convert_subframe_det_to_map(all_detections)
+    frame_det_coords = self.convert_subframe_det_to_original_det(image_info_detections)
 
-    all_frame_detections = []
-    for ndx, frame_index in enumerate(det_map.keys()):
-      frame_detections = det_map[frame_index]
+    return self.get_unique_faces(frame_det_coords)
 
-      frame_det_coords = self.convert_subframe_det_to_original_det(frame_detections, frame_index)
+    # logger.info(f"About to get unique faces in subframes.")
+    #
+    # det_map = self.convert_subframe_det_to_map(all_detections)
+    #
+    # all_frame_detections = []
+    # for ndx, frame_index in enumerate(det_map.keys()):
+    #   frame_detections = det_map[frame_index]
+    #
+    #   frame_det_coords = self.convert_subframe_det_to_original_det(frame_detections, frame_index)
+    #
+    #   all_frame_detections.append(self.get_unique_faces(frame_det_coords, frame_index))
+    #
+    # return all_frame_detections
 
-      all_frame_detections.append(self.get_unique_faces(frame_det_coords, frame_index))
-
-    return all_frame_detections
-
-  def convert_subframe_det_to_original_det(self, frame_detections, frame_index) -> List:
+  def convert_subframe_det_to_original_det(self, image_info_detections: List[Dict]) -> List:
     frame_det_coords = []
-    for fd in frame_detections:
-      coord_index = fd["coord_index"]
-      sub_frame_detections = fd['sub_frame_detections']
+    for image_info_det in image_info_detections:
+      image_info = image_info_det['image_info']
+      sub_frame_coords = image_info['sub_frame_coords']
+      frame_index = image_info_det['frame_index']
+      face_detections = image_info_det['face_detections']
 
-      coord_list = self.get_face_coord_on_original(sub_frame_detections, coord_index)
+      coord_list = self.get_face_coord_on_original(face_detections, frame_index, sub_frame_coords)
 
       frame_det_coords.extend(coord_list)
 
@@ -218,7 +226,7 @@ class BlazeDataSet(Dataset):
 
     return det_map
 
-  def get_unique_faces(self, frame_det_coords: List, frame_index: int) -> List[Dict]:
+  def get_unique_faces(self, frame_det_coords: List) -> List[Dict]:
     min_diff = 50
     unique_face_coords: List[Tuple[int, Any, Any]] = []
     for ndx, coords in enumerate(frame_det_coords):
@@ -241,13 +249,9 @@ class BlazeDataSet(Dataset):
         if is_unique:
           unique_face_coords.append((ndx, xmin, ymin))
 
-    return [dict(coords=frame_det_coords[ndx], frame_index=frame_index) for (ndx, _, _) in unique_face_coords]
+    return [frame_det_coords[ndx] for (ndx, _, _) in unique_face_coords]
 
-  def get_face_coord_on_original(self, detections_in_sub_frame: List, coord_index: int) -> List:
-    c = self.coords_list[coord_index]
-    frame_index = c['frame_index']
-    coords = c['sub_frame_coords']
-
+  def get_face_coord_on_original(self, detections_in_sub_frame: List, frame_index: int, coords: Dict) -> List:
     o_ymin = coords['ymin']
     o_ymax = coords['ymax']
     o_xmin = coords['xmin']
@@ -264,7 +268,7 @@ class BlazeDataSet(Dataset):
       ymax_frac = face[2]
       xmax_frac = face[3]
 
-      image_orig = self.originals[frame_index]
+      image_orig = self.original_frame_info[frame_index]['image']
       original_height, original_width, _ = image_orig.shape
 
       height_crop = o_ymax - o_ymin

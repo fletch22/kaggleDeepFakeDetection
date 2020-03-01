@@ -55,3 +55,10 @@ python -m pip install --upgrade pip
 
 python -m pytest tests\services\TestFaceRecogService.py::TestFaceRecogService::test_mtcnn_get_many_face_recog -s
 
+
+# Pipeline Construction:
+
+    1. Face Detection (to files) -> 2. Move into Redis (FaceFinder objects)
+    
+    
+

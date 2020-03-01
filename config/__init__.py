@@ -32,6 +32,9 @@ os.makedirs(SSIM_RND_DIFFS_OUTPUT_PATH, exist_ok=True)
 FACE_DET_PAR_PATH = Path(OUTPUT_PATH, "face_detections")
 os.makedirs(FACE_DET_PAR_PATH, exist_ok=True)
 
+FACE_DET_MAP_PATH = Path(OUTPUT_PATH, "face_detections_map")
+os.makedirs(FACE_DET_MAP_PATH, exist_ok=True)
+
 TRASH_PATH = os.path.join(OUTPUT_PATH, "trash")
 os.makedirs(TRASH_PATH, exist_ok=True)
 

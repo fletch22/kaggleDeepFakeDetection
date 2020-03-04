@@ -44,4 +44,6 @@ class FaceFinder():
   def load(redis_service: RedisService, vid_path: Path) -> FaceFinder:
     key = FaceFinder.get_redis_key(vid_path)
     face_finder: FaceFinder = redis_service.read_binary(key)
+    if face_finder is None:
+      raise Exception(f'Encountered problem with getting a face finder from redis. FaceFinder \'{key}\' could not be found.')
     return face_finder

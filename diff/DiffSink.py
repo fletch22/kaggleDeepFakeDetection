@@ -1,12 +1,15 @@
 import pickle
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
+import config
 from diff.RandomFrameDiff import RandomFrameDiff
 from services import file_service
 from util import random_util
 
+logger = config.create_logger(__name__)
 
 class DiffSink():
 
@@ -20,13 +23,11 @@ class DiffSink():
 
     for f in file_paths:
       with open(str(f), 'rb') as fp:
+        logger.info(f'About to load pickle file \'{f.name}\' with processed data ...')
         df = pickle.load(fp)
-        path_list = df['path'].tolist()
-        for p in path_list:
-          df_filtered = df[df['path'] == p]
-          frame_index_list = []
-          for ndx, row in df_filtered.iterrows():
-            frame_index_list.append(row['frame_index'])
+        path_set = set(df['path'].tolist())
+        for p in path_set:
+          frame_index_list = df[df['path'] == p]['frame_index'].tolist()
           self.path_map[Path(p).name] = frame_index_list
 
     self.intialize_new_dataframe()
@@ -41,11 +42,22 @@ class DiffSink():
 
     self.output_path = Path(str(parent_output), f'dataframe_{rnd_str}.pkl')
 
-  def is_processed(self, vp: Path, frame_index):
+  def is_max_frames_in_video_processed(self, vp: Path, max_frames_per_video: int):
     filename = vp.name
     result = False
     if filename in self.path_map.keys():
-      if str(frame_index) in self.path_map[filename]:
+      frames: List = self.path_map[filename]
+      if len(frames) >= max_frames_per_video:
+        result = True
+
+    return result
+
+  def is_frame_processed(self, vp: Path, frame_index):
+    filename = vp.name
+    result = False
+    if filename in self.path_map.keys():
+      frame_map = self.path_map[filename]
+      if str(frame_index) in frame_map:
         result = True
 
     return result
@@ -61,3 +73,17 @@ class DiffSink():
     size = self.output_path.stat().st_size / 1000000
     if size > self.max_output_size_mb:
       self.intialize_new_dataframe()
+
+  @staticmethod
+  def get_persisted(pickle_parent_path: Path) -> pd.DataFrame:
+    pickles = file_service.walk_to_path(pickle_parent_path, filename_endswith='.pkl')
+
+    df_all = []
+    for p in pickles:
+      df = pd.read_pickle(str(p))
+      df_all.append(df)
+
+    return pd.concat(df_all)
+
+
+

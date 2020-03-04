@@ -41,3 +41,6 @@ def pipeline_stage_2():
       logger.info(f'Writing to redis \'{vid_path.name}\'.')
       redis_service.write_binary(FaceFinder.get_redis_key(vid_path), face_finder)
 
+if __name__ == '__main__':
+    pipeline_stage_2()
+

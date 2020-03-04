@@ -23,7 +23,7 @@ def get_single_image_from_vid(video_file_path: Path, frame_index: int = 0) -> (o
     success, image = cap.read()
     height, width, channels = image.shape
 
-    image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+    image = cv2.cvtColor(image, cv.COLOR_BGR2RGB)
   finally:
     if cap is not None:
       cap.release()

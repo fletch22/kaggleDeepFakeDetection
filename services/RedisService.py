@@ -2,10 +2,13 @@ import codecs
 import json
 import pickle
 import zlib
+
 import redis
+
 import config
 
 logger = config.create_logger(__name__)
+
 
 class RedisService:
   redis_client = None
@@ -16,6 +19,7 @@ class RedisService:
     password = ""
     self.app_key = "kaggleDeepFakeDetection"
 
+    logger.info(f'About to attempt to start Redis client ...')
     self.redis_client = redis.StrictRedis(
       host=hostname,
       port=port,
@@ -23,6 +27,7 @@ class RedisService:
       decode_responses=True,
       socket_timeout=100
     )
+    logger.info(f'Redis client started.')
 
   def write_string(self, key: str, value: str):
     self.redis_client.set(key, value)
@@ -47,9 +52,14 @@ class RedisService:
 
   def read_binary(self, key):
     redis_str = self.redis_client.get(self._compose_key(key))
-    encoded_str = codecs.decode(redis_str.encode(), "base64")
-    pickled = zlib.decompress(encoded_str)
-    return pickle.loads(pickled)
+
+    obj = None
+    if redis_str is not None:
+      encoded_str = codecs.decode(redis_str.encode(), "base64")
+      pickled = zlib.decompress(encoded_str)
+      obj = pickle.loads(pickled)
+
+    return obj
 
   def close_client_connection(self):
     self.redis_client.close()

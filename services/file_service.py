@@ -15,7 +15,7 @@ def walk(dir):
   return file_paths
 
 
-def walk_to_path(dir, filename_startswith: str = None, filename_endswith: str = None):
+def walk_to_path(dir: Path, filename_startswith: str = None, filename_endswith: str = None):
   file_paths = walk(str(dir))
   paths = [Path(f) for f in file_paths]
 

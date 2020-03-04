@@ -11,7 +11,7 @@ from diff.DiffSink import DiffSink
 from diff.FaceFinder import FaceFinder
 from diff.FaceSquare import FaceSquare
 from diff.RandomFrameDiff import RandomFrameDiff
-from services import video_service
+from services import video_service, face_recog_service
 from services.RedisService import RedisService
 from util import list_utils
 from util.BatchData import BatchData
@@ -19,8 +19,10 @@ from util.BatchDataRow import BatchDataRow
 
 logger = config.create_logger(__name__)
 
+LEARNING_HEIGHT = 244
+LEARNING_WIDTH = 244
 
-class TwoDCoords(object):
+class Point(object):
   def __init__(self, x: int, y: int):
     self.x = x
     self.y = y
@@ -38,21 +40,24 @@ class RandomVidDiffs():
     self.diffs = diffs
 
 
-def get_diffs(batch_data: BatchData, output_parent_path: Path, max_total_process: int = None, max_process_per_video: int = None):
-  fakes_filterd: List[BatchDataRow] = BatchData.convert(batch_data.get_fakes())
+def process_all_diffs(batch_data: BatchData, diff_sink: DiffSink, output_parent_path: Path, max_total_process: int = None, max_process_per_video: int = None):
+  fakes_filtered: List[BatchDataRow] = BatchData.convert(batch_data.get_fakes())
+
+  logger.info(f'Found {len(fakes_filtered)} number of fake videos in batch.')
 
   vid_pair_list = []
-  for ndx, batch_row_data in enumerate(fakes_filterd):
+  logger.info(f'About to collect fake and real video pairs ...')
+  for ndx, batch_row_data in enumerate(fakes_filtered):
     original_filename = batch_row_data.original_filename
 
     vid_path_fake: Path = batch_row_data.video_path
     vid_path_real = batch_data.get_vid_path(original_filename)
 
     vid_pair_list.append(VideoPair(vid_path_real, vid_path_fake))
+  logger.info(f'Done collecting video pairs.')
 
-  fakes_chunked = list_utils.chunks(vid_pair_list, 1)
+  fakes_chunked = list_utils.chunks(vid_pair_list, 2)
   chunked_list = list(fakes_chunked)
-  diff_sink = DiffSink(output_parent_path)
 
   redis_service = RedisService()
 
@@ -63,11 +68,17 @@ def get_diffs(batch_data: BatchData, output_parent_path: Path, max_total_process
 
     vid_diffs = []
     for vid_pair in chunk:
+      is_max_processed = diff_sink.is_max_frames_in_video_processed(vid_pair.vid_path_fake, max_process_per_video)
+      if is_max_processed:
+        logger.info(f'Skipping video \'{vid_pair.vid_path_fake.name}\'. Already processed.')
+        continue
       diff: RandomVidDiffs = process_diff(redis_service, diff_sink, vid_pair, max_process_per_video=max_process_per_video)
       vid_diffs.append(diff)
       cum_processed += len(diff.diffs)
 
     persist(diff_sink, vid_diffs, output_parent_path, max_swatches=max_total_process, randomize=True)
+
+  return cum_processed
 
 
 def get_unproc_fakes(batch_data, output_path):
@@ -113,9 +124,6 @@ def persist(diff_sink: DiffSink, diffs: List[RandomVidDiffs], output_par_path: P
     for f in random_frame_diffs:
       score_str = str(round(f.score, 5) * 100000)
 
-      if diff_sink.is_processed(vp, f.frame_index):
-        continue
-
       swatch_path = Path(str(image_dir_path), f'{f.frame_index}_{score_str}.png')
       img_fixed = cv2.cvtColor(f.image, cv2.COLOR_BGR2RGB)
       cv2.imwrite(str(swatch_path), img_fixed)
@@ -150,28 +158,38 @@ def get_processed_vids(output_path: Path):
   return result
 
 
-def does_intersect_with_face(face_finder: FaceFinder, frame_index: int, top_left_corner: TwoDCoords, bottom_right_corner: TwoDCoords):
-  result = False
-
+def does_intersect_with_face(face_finder: FaceFinder, frame_index: int, l1: Point, r1: Point, height: int, width: int):
   frame_faces: List[FaceSquare] = face_finder.get_frame_faces(frame_index)
 
+  result = False
   for ff in frame_faces:
-    if (ff.xmin < top_left_corner.x < ff.xmax
-      and ff.ymin < top_left_corner.y < ff.ymax) \
-      or (ff.xmin < bottom_right_corner.x < ff.xmax
-          and ff.ymin < top_left_corner.y < ff.ymax) \
-      or (ff.xmin < top_left_corner.x < ff.xmax
-          and ff.ymin < bottom_right_corner.y < ff.ymax) \
-      or (ff.xmin < bottom_right_corner.x < ff.xmax
-          and ff.ymin < bottom_right_corner.y < ff.ymax):
-      result = True
-      break
+    bottom, left, right, top = face_recog_service.adjust_face_boundary(ff.ymax, ff.xmin, ff.xmax, ff.ymin, width, height)
+    l2 = Point(left, top)
+    r2 = Point(right, bottom)
+
+    # Quadrant 1 and 3
+    if l2.x < l1.x < r2.x and ((l2.y < l1.y < r2.y) or (l2.y < r1.y < r2.y)):
+      return True
+
+    # Quadrant 2 and 4
+    if (l2.x < r1.x < r2.x) and ((l2.y < l1.y < r2.y) or (l2.y < r1.y < r2.y)):
+      return True
+
+    if l1.x < l2.x < r1.x and ((l1.y < l2.y < r1.y) or (l1.y < r2.y < r1.y)):
+      return True
+
+    # Quadrant 2 and 4
+    if (l1.x < r2.x < r1.x) and ((l1.y < l2.y < r1.y) or (l1.y < r2.y < r1.y)):
+      return True
+
 
   return result
 
 
 def get_random_diffs(face_finder: FaceFinder, diff_sink: DiffSink, fake_frame_infos, real_frame_infos, max_process_per_video: int = None) -> List[RandomFrameDiff]:
   frame_rnd_diffs = []
+
+  random.shuffle(fake_frame_infos)
 
   cum_diffed = 0
   for image_fake_info in fake_frame_infos:
@@ -180,46 +198,50 @@ def get_random_diffs(face_finder: FaceFinder, diff_sink: DiffSink, fake_frame_in
 
     image_fake, _, _, frame_index, vid_path = image_fake_info
 
-    if diff_sink.is_processed(vid_path, frame_index=frame_index):
+    if diff_sink.is_frame_processed(vid_path, frame_index=frame_index):
       logger.info("Found item already processed. Moving on ...")
       continue
 
     image_real_info = real_frame_infos[frame_index]
     image_real, _, _, _, _ = image_real_info
 
-    o_height, o_width, _ = image_real.shape
-    f_height, f_width, _ = image_fake.shape
-
-    # if f_height * f_width > o_height * o_width:
-    #   image_real = cv2.resize(image_real, (f_width, f_height), interpolation=cv2.INTER_NEAREST)
-    # elif o_height * o_width > f_height * f_width:
-    #   image_fake = cv2.resize(image_fake, (o_width, o_height), interpolation=cv2.INTER_NEAREST)
-
     # Choose random 244 x 244 from 1920, 1080
-    height = 244
-    width = 244
-    max_x = o_width - width
-    max_y = o_height - height
-
-    x_rnd = None
-    y_rnd = None
-
-    does_intersect = True
-    while (does_intersect):
-      x_rnd = random.randint(1, max_x)
-      y_rnd = abs(random.randint(1, max_y))
-      does_intersect = does_intersect_with_face(face_finder=face_finder, frame_index=frame_index, top_left_corner=TwoDCoords(x_rnd, y_rnd), bottom_right_corner=TwoDCoords(x_rnd + width, y_rnd + width))
-      if does_intersect:
-        logger.info("Randomly chosen swatch intersects with face. Will attempt to choose another swatch.")
-
-    swatch_real = image_real[y_rnd:y_rnd + height, x_rnd:x_rnd + width]
-    swatch_fake = image_fake[y_rnd:y_rnd + height, x_rnd:x_rnd + width]
+    swatch_fake, swatch_real, x_rnd, y_rnd = get_swatch_pair(face_finder, frame_index, image_fake, image_real)
 
     score = get_ssim_score(swatch_fake, swatch_real)
-    frame_rnd_diffs.append(RandomFrameDiff(swatch_fake, frame_index, x_rnd, y_rnd, height, width, score))
+    frame_rnd_diffs.append(RandomFrameDiff(swatch_fake, frame_index, x_rnd, y_rnd, LEARNING_HEIGHT, LEARNING_WIDTH, score))
     cum_diffed += 1
 
   return frame_rnd_diffs
+
+
+def get_swatch_pair(face_finder, frame_index, image_fake, image_real):
+  o_height, o_width, _ = image_real.shape
+  f_height, f_width, _ = image_fake.shape
+
+  x_rnd, y_rnd = get_random_coords(face_finder, frame_index, o_height, o_width)
+  swatch_real = image_real[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
+  swatch_fake = image_fake[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
+
+  return swatch_fake, swatch_real, x_rnd, y_rnd
+
+
+def get_random_coords(face_finder: FaceFinder, frame_index, o_height, o_width):
+  max_x = o_width - LEARNING_WIDTH
+  max_y = o_height - LEARNING_HEIGHT
+
+  x_rnd = None
+  y_rnd = None
+
+  does_intersect = True
+  while does_intersect is True:
+    x_rnd = random.randint(1, max_x)
+    y_rnd = random.randint(1, max_y)
+    does_intersect = does_intersect_with_face(face_finder=face_finder, frame_index=frame_index, l1=Point(x_rnd, y_rnd), r1=Point(x_rnd + LEARNING_WIDTH, y_rnd + LEARNING_HEIGHT), height=o_height, width=o_width)
+    # if does_intersect:
+    #   logger.info("Randomly chosen swatch intersects with face. Will attempt to choose another swatch.")
+
+  return x_rnd, y_rnd
 
 
 def get_ssim_score(image_fake, image_real):

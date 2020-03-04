@@ -58,7 +58,7 @@ python -m pytest tests\services\TestFaceRecogService.py::TestFaceRecogService::t
 
 # Pipeline Construction:
 
-    1. Face Detection (to files) -> 2. Move into Redis (FaceFinder objects)
+    1. Face Detection (to files) -> 2. Move into Redis (FaceFinder objects) -> Create Swatch Avoiding Faces (30/video)
     
     
 

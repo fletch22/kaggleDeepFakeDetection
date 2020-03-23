@@ -63,15 +63,17 @@ def process_specific_video_frames(video_file_path: Path, frames: List[str], fnPr
   cap = None
   results = []
 
+  sorted(frames)
+
   logger.info("About to get video.")
   try:
     cap = get_video_capture(video_file_path)
-    num_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
     logger.info("About to process frames in video.")
     for frame_index in frames:
       if max_process is not None and len(results) >= max_process:
         break
+      cap.set(cv.cv2.CAP_PROP_POS_FRAMES, frame_index)
       success, image = cap.read()
       image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
       height, width, _ = image.shape

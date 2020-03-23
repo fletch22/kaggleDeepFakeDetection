@@ -22,6 +22,7 @@ logger = config.create_logger(__name__)
 LEARNING_HEIGHT = 244
 LEARNING_WIDTH = 244
 
+
 class Point(object):
   def __init__(self, x: int, y: int):
     self.x = x
@@ -68,7 +69,7 @@ def process_all_diffs(batch_data: BatchData, diff_sink: DiffSink, output_parent_
 
     vid_diffs = []
     for vid_pair in chunk:
-      is_max_processed = diff_sink.is_max_frames_in_video_processed(vid_pair.vid_path_fake, max_process_per_video)
+      is_max_processed = diff_sink.is_max_frames_processed(vid_pair.vid_path_fake, max_process_per_video)
       if is_max_processed:
         logger.info(f'Skipping video \'{vid_pair.vid_path_fake.name}\'. Already processed.')
         continue
@@ -167,21 +168,21 @@ def does_intersect_with_face(face_finder: FaceFinder, frame_index: int, l1: Poin
     l2 = Point(left, top)
     r2 = Point(right, bottom)
 
-    # Quadrant 1 and 3
+    # NOTE: 2020-03-04: Test if random square corner is inside face square: Quadrant 1 and 3
     if l2.x < l1.x < r2.x and ((l2.y < l1.y < r2.y) or (l2.y < r1.y < r2.y)):
       return True
 
-    # Quadrant 2 and 4
+    # NOTE: 2020-03-04: Quadrant 2 and 4
     if (l2.x < r1.x < r2.x) and ((l2.y < l1.y < r2.y) or (l2.y < r1.y < r2.y)):
       return True
 
+    # NOTE: 2020-03-04: Test if face corner is inside random square: Quadrant 1 and 3
     if l1.x < l2.x < r1.x and ((l1.y < l2.y < r1.y) or (l1.y < r2.y < r1.y)):
       return True
 
-    # Quadrant 2 and 4
+    # NOTE: 2020-03-04: Quadrant 2 and 4
     if (l1.x < r2.x < r1.x) and ((l1.y < l2.y < r1.y) or (l1.y < r2.y < r1.y)):
       return True
-
 
   return result
 
@@ -191,12 +192,15 @@ def get_random_diffs(face_finder: FaceFinder, diff_sink: DiffSink, fake_frame_in
 
   random.shuffle(fake_frame_infos)
 
-  cum_diffed = 0
+  cum_diffed = None
   for image_fake_info in fake_frame_infos:
+    image_fake, _, _, frame_index, vid_path = image_fake_info
+
+    if cum_diffed is None:
+      cum_diffed = diff_sink.get_num_frames_processed(vid_path)
+
     if max_process_per_video is not None and cum_diffed > max_process_per_video:
       break
-
-    image_fake, _, _, frame_index, vid_path = image_fake_info
 
     if diff_sink.is_frame_processed(vid_path, frame_index=frame_index):
       logger.info("Found item already processed. Moving on ...")
@@ -207,6 +211,9 @@ def get_random_diffs(face_finder: FaceFinder, diff_sink: DiffSink, fake_frame_in
 
     # Choose random 244 x 244 from 1920, 1080
     swatch_fake, swatch_real, x_rnd, y_rnd = get_swatch_pair(face_finder, frame_index, image_fake, image_real)
+
+    if swatch_fake is None or swatch_real is None or x_rnd is None or y_rnd is None:
+      continue
 
     score = get_ssim_score(swatch_fake, swatch_real)
     frame_rnd_diffs.append(RandomFrameDiff(swatch_fake, frame_index, x_rnd, y_rnd, LEARNING_HEIGHT, LEARNING_WIDTH, score))
@@ -219,9 +226,17 @@ def get_swatch_pair(face_finder, frame_index, image_fake, image_real):
   o_height, o_width, _ = image_real.shape
   f_height, f_width, _ = image_fake.shape
 
-  x_rnd, y_rnd = get_random_coords(face_finder, frame_index, o_height, o_width)
-  swatch_real = image_real[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
-  swatch_fake = image_fake[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
+  x_rnd = None
+  y_rnd = None
+
+  swatch_fake = None
+  swatch_real = None
+
+  if o_height > LEARNING_HEIGHT and o_width > LEARNING_WIDTH:
+    x_rnd, y_rnd = get_random_coords(face_finder, frame_index, o_height, o_width)
+    if x_rnd is not None and y_rnd is not None:
+      swatch_real = image_real[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
+      swatch_fake = image_fake[y_rnd:y_rnd + LEARNING_HEIGHT, x_rnd:x_rnd + LEARNING_WIDTH]
 
   return swatch_fake, swatch_real, x_rnd, y_rnd
 
@@ -234,12 +249,18 @@ def get_random_coords(face_finder: FaceFinder, frame_index, o_height, o_width):
   y_rnd = None
 
   does_intersect = True
+  try_count = 0
+  max_try_count = 100
   while does_intersect is True:
     x_rnd = random.randint(1, max_x)
     y_rnd = random.randint(1, max_y)
     does_intersect = does_intersect_with_face(face_finder=face_finder, frame_index=frame_index, l1=Point(x_rnd, y_rnd), r1=Point(x_rnd + LEARNING_WIDTH, y_rnd + LEARNING_HEIGHT), height=o_height, width=o_width)
-    # if does_intersect:
-    #   logger.info("Randomly chosen swatch intersects with face. Will attempt to choose another swatch.")
+    try_count += 1
+    if try_count > max_try_count:
+      x_rnd = None
+      y_rnd = None
+      logger.info("Giving up trying to find random frame. Exceeded try limit.")
+      break
 
   return x_rnd, y_rnd
 

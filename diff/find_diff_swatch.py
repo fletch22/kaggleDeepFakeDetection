@@ -7,17 +7,12 @@ from cv2 import cv2
 from skimage.metrics import structural_similarity
 
 import config
-from services import video_service, image_service, spark_service
+from services import video_service, image_service
 from util.BatchData import BatchData
 from util.BatchDataRow import BatchDataRow
+from util.list_utils import chunks
 
 logger = config.create_logger(__name__)
-
-
-def chunks(lst, n):
-  """Yield successive n-sized chunks from lst."""
-  for i in range(0, len(lst), n):
-    yield lst[i:i + n]
 
 
 def get_diffs(batch_data: BatchData, output_path: Path, max_diffs: int = None) -> List:
@@ -88,11 +83,13 @@ def persist(diffs: List[Dict], output_path: Path):
 
   df.to_pickle(output_path_str)
 
+
 def get_processed_vids(output_path: Path):
   output_path_str = str(output_path)
   df = pd.read_pickle(output_path_str)
 
   return df['fake_filename'].tolist()
+
 
 def get_all_vid_hotspots(fake_frame_infos, real_frame_infos):
   frame_diff_hotspots = []

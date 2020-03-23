@@ -11,6 +11,7 @@ from diff import find_diff_random
 from diff.DiffSink import DiffSink
 from diff.FaceFinder import FaceFinder
 from diff.FaceSquare import FaceSquare
+from pipelines import first_pipeline
 from services import batch_data_loader_service, video_service, image_service, file_service, face_recog_service
 from services.RedisService import RedisService
 from util.BatchData import BatchData
@@ -39,29 +40,7 @@ class TestFindDiffSwatch(TestCase):
     # Assert
 
   def test_spot_rnd_diff(self):
-    # Arrange
-    output_par_path = Path(config.SSIM_RND_DIFFS_OUTPUT_PATH)
-
-    # files_c = file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_C), filename_endswith="metadata.json")
-    files_d = file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_D), filename_endswith="metadata.json")
-    files = files_d # + files_c
-    shuffle(files)
-
-    # batch_data = batch_data_loader_service.load_batch(3)
-    max_process = 1000000
-    max_process_per_video = 30
-    diff_sink = DiffSink(output_par_path)
-
-    num_processed = 0
-    for f in files:
-      if num_processed > max_process:
-        break
-      batch_data: BatchData = batch_data_loader_service.load_batch_from_path(f)
-      num_processed += find_diff_random.process_all_diffs(batch_data, diff_sink, output_par_path, max_total_process=max_process, max_process_per_video=max_process_per_video)
-
-    logger.info(f'Total Processed: {num_processed}.')
-
-    # Assert
+    first_pipeline.pipeline_stage_3()
 
   def test_load_face_data(self):
     pass
@@ -70,7 +49,7 @@ class TestFindDiffSwatch(TestCase):
   def test_load_face_finder(self):
     # Arrange
     filename = 'ahhdprhoww.mp4'
-    vid_path = Path(f'D:\Kaggle Downloads\deepfake-detection-challenge\train\dfdc_train_part_0\{filename}')
+    vid_path = Path(f'D:\\Kaggle Downloads\\deepfake-detection-challenge\\train\\dfdc_train_part_0\\{filename}')
     key = FaceFinder.get_redis_key(vid_path)
     redis_service = RedisService()
 
@@ -140,24 +119,7 @@ class TestFindDiffSwatch(TestCase):
     image_rect_1 = cv2.rectangle(image, pt1=l1, pt2=r1, color=red, thickness=3)
     image_rect_1 = cv2.rectangle(image, pt1=l2, pt2=r2, color=green, thickness=3)
 
-    # l1: 408,706; r1: 652:950 - swatch
-    # l2: 397,812; r2: 560,976 - face
-
     image_service.show_image(image_rect_1, 'Original')
-    #
-    # redis_service = RedisService()
-    #
-    # face_finder = FaceFinder.load(redis_service, vid_path)
-    #
-    # detections: List[FaceSquare] = face_finder.frame_detections[str(0)]
-    # for face in detections:
-    #   logger.info(f'{face.xmin}; {face.xmax}; {face.ymin}; {face.ymax}')
-    #   image_cropped = image[face.ymin:face.ymax,  face.xmin:face.xmax]
-    #   image_service.show_image(image_cropped, 'Face')
-
-    # Act
-
-    # Assert
 
   def test_get_swatch_pair(self):
     # Arrange

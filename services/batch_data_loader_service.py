@@ -41,3 +41,29 @@ def load_batch_from_path(path: Path) -> BatchData:
   logger.info("Loaded metadata.json data.")
 
   return BatchData(df_metadata)
+
+
+def get_metadata_json_files():
+  # files_c = file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_C), filename_endswith="metadata.json")
+  return file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_D), filename_endswith="metadata.json")
+
+
+def get_all_metadata():
+  logger.info("About to get all metadata JSON files ...")
+  files = get_metadata_json_files()
+  df_all = [load_batch_from_path(f).df_metadata for f in files]
+
+  logger.info('About to concatenate all metadata JSON files.')
+  return pd.concat(df_all)
+
+
+# NOTE: 2020-03-06: So far data only from drive D has been processed.
+def save_all_metadata_to_single_df():
+  df = get_all_metadata()
+  df.to_pickle(config.DF_ALL_METADATA_PATH)
+
+
+# NOTE: 2020-03-06: This is only from drive D.
+def read_all_metadata_as_df() -> pd.DataFrame:
+  logger.info("About to read all metadata as a dataframe ...")
+  return pd.read_pickle(config.DF_ALL_METADATA_PATH)

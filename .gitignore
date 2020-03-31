@@ -6,3 +6,4 @@ config/__pycache__/
 tests/services/.cache/
 __pycache__/
 
+tests/notebooks/.cache/

@@ -83,6 +83,21 @@ os.makedirs(MERGED_SWATCH_DATA_PATH, exist_ok=True)
 MERGED_SWATCH_IMAGES_PATH = Path(MERGED_SWATCH_PAR_PATH, 'images')
 os.makedirs(MERGED_SWATCH_IMAGES_PATH, exist_ok=True)
 
+OUTPUT_VIRGIN_TEST_DATA_PAR_PATH = Path(OUTPUT_PATH_C, 'virgin_test_data')
+os.makedirs(OUTPUT_VIRGIN_TEST_DATA_PAR_PATH, exist_ok=True)
+
+OUTPUT_VIRGIN_TEST_DF_PAR_PATH = Path(OUTPUT_VIRGIN_TEST_DATA_PAR_PATH, 'dataframes')
+os.makedirs(OUTPUT_VIRGIN_TEST_DF_PAR_PATH, exist_ok=True)
+
+OUTPUT_VIRGIN_TEST_IMAGES_PAR_PATH = Path(OUTPUT_VIRGIN_TEST_DATA_PAR_PATH, 'images')
+os.makedirs(OUTPUT_VIRGIN_TEST_IMAGES_PAR_PATH, exist_ok=True)
+
+OUTPUT_MODEL_PAR_PATH = Path(OUTPUT_PATH_C, 'exported_models')
+os.makedirs(OUTPUT_MODEL_PAR_PATH, exist_ok=True)
+
+OUTPUT_LEARNER_PAR_PATH = Path(OUTPUT_MODEL_PAR_PATH, 'learners')
+OUTPUT_LEARNER_PAR_PATH.mkdir(exist_ok=True)
+OUTPUT_LEARNER_CNN_PATH = Path(OUTPUT_LEARNER_PAR_PATH, 'cnn_learner.pkl')
 
 def get_train_batch_path(index: int):
   return os.path.join(TRAIN_PARENT_PATH_D, f"{TRAIN_DIR_PREFIX}{index}")

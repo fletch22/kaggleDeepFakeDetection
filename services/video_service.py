@@ -59,7 +59,7 @@ def process_all_video_frames(video_file_path: Path, fnProcess=None, max_process:
 
   return results
 
-def process_specific_video_frames(video_file_path: Path, frames: List[str], fnProcess=None, max_process: int = None):
+def process_specific_video_frames(video_file_path: Path, frames: List[int], fnProcess=None, max_process: int = None):
   cap = None
   results = []
 

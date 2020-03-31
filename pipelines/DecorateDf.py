@@ -23,6 +23,10 @@ class DecorateDf(Pipeline):
     df['filename'] = df['path'].apply(lambda x: Path(x).name)
     df['video_name_stem'] = df['path'].apply(lambda x: Path(x).stem.split('_')[0])
     df['gross_label'] = df['path'].apply(lambda x: 'real' if x.endswith('1.0.png') else 'fake')
+    df['score_1places'] = np.around(df['score'].values, decimals=1)
+    df['score_2places'] = np.around(df['score'].values, decimals=2)
+    df['score_3places'] = np.around(df['score'].values, decimals=3)
+    df['score_4places'] = np.around(df['score'].values, decimals=4)
 
     video_names = df['video_name_stem'].unique()
 
@@ -57,7 +61,6 @@ class DecorateDf(Pipeline):
     logger.info(f'Train {train_rows} rows.')
     logger.info(f'Validation {val_rows} rows.')
     logger.info(f'Test {test_rows} rows.')
-
     logger.info(f'Head: {df.head()}')
 
     result = {'output_path': self.persist_output_dataframe(df)}

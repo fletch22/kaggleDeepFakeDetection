@@ -8,16 +8,16 @@ import config
 logger = config.create_logger(__name__)
 
 real_filename_full = 'df_r.pkl'
-fake_filename_full = 'df_r.pkl'
+fake_filename_full = 'df_f.pkl'
 
 real_filename_tiny = 'df_r_tiny.pkl'
 fake_filename_tiny = 'df_r_tiny.pkl'
 
 
-def merge_real_and_fake(destination: Path, max_process=None):
-  raise Exception("Not implemented yet. Need to read existing DF to determine already processed and need to update same instead of creating new DF every time this function is run.")
-
+def merge_real_and_fake(destination: Path, max_process=None, overwrite_existing: bool = False):
   df_f, df_r = get_dataframes(max_process)
+
+  logger.info(f'fake: {df_f.shape[0]}; real: {df_r.shape[0]}')
 
   all_fpaths, all_labels = get_labels_and_paths(df_f, df_r)
 
@@ -39,11 +39,29 @@ def merge_real_and_fake(destination: Path, max_process=None):
   data_list = [map[i] for i in map.keys()]
 
   df = pd.DataFrame(data=data_list, columns=['path', 'score', 'original_path'])
-  to_pickle(destination, df)
+  assert (df.shape[0] == len(data_list))
 
-  assert(df.shape[0] == len(data_list))
+  persist(destination, df, overwrite_existing=overwrite_existing)
 
   return map
+
+
+def persist(destination: Path, df: pd.DataFrame, overwrite_existing: bool = False):
+  data_path = Path(destination, 'data')
+  data_path.mkdir(exist_ok=True)
+  pickle_path = Path(data_path, 'data.pkl')
+
+  df_original = None
+
+  if pickle_path.exists() and not overwrite_existing:
+    df_original = pd.read_pickle(str(pickle_path))
+
+  if df_original is not None:
+    df = pd.concat([df_original, df])
+
+  df.to_pickle(pickle_path)
+
+  return df
 
 
 def get_labels_and_paths(df_f, df_r):
@@ -84,21 +102,14 @@ def add_to_map(label: str, map: dict, path_images: Path, path_str: str):
     if str(new_path) in map.keys():
       raise Exception("Path already exists in map.")
 
-    map[str(new_path)] = {
-      'path': str(new_path),
-      'score': label,
-      'original_path': path_str
-    }
+  # FIXME: Move this back into the if statement
+  map[str(new_path)] = {
+    'path': str(new_path),
+    'score': label,
+    'original_path': path_str
+  }
 
   return map
-
-
-def to_pickle(destination, df):
-  data_path = Path(destination, 'data')
-  data_path.mkdir(exist_ok=True)
-  pickle_path = Path(data_path, 'data.pkl')
-
-  df.to_pickle(pickle_path)
 
 
 def getTempDataframes():

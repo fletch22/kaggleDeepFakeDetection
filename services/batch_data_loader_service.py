@@ -43,14 +43,16 @@ def load_batch_from_path(path: Path) -> BatchData:
   return BatchData(df_metadata)
 
 
-def get_metadata_json_files():
-  # files_c = file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_C), filename_endswith="metadata.json")
-  return file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_D), filename_endswith="metadata.json")
+def get_metadata_json_files(which_drive: str):
+  if which_drive.lower() == 'c':
+    return file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_C), filename_endswith="metadata.json")
+  else:
+    return file_service.walk_to_path(Path(config.TRAIN_PARENT_PATH_D), filename_endswith="metadata.json")
 
 
-def get_all_metadata():
+def get_all_metadata(which_drive: str):
   logger.info("About to get all metadata JSON files ...")
-  files = get_metadata_json_files()
+  files = get_metadata_json_files(which_drive)
   df_all = [load_batch_from_path(f).df_metadata for f in files]
 
   logger.info('About to concatenate all metadata JSON files.')
@@ -59,8 +61,9 @@ def get_all_metadata():
 
 # NOTE: 2020-03-06: So far data only from drive D has been processed.
 def save_all_metadata_to_single_df():
-  df = get_all_metadata()
-  df.to_pickle(config.DF_ALL_METADATA_PATH)
+  raise Exception("Disabled 'save_all_metadata_to_single_df' for now to prevent overwriting D drive data.")
+  # df = get_all_metadata()
+  # df.to_pickle(config.DF_ALL_METADATA_PATH)
 
 
 # NOTE: 2020-03-06: This is only from drive D.

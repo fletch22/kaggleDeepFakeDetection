@@ -1,11 +1,15 @@
 from unittest import TestCase
 
-from fastai.vision import ImageList, Path, LabelList, LabelLists
+from fastai.metrics import error_rate
+from fastai.vision import ImageList, Path, LabelList, LabelLists, models, accuracy, cnn_learner, FloatList, create_cnn
 
 import config
-from learners import cnn_learner
 
 import pandas as pd
+
+from learners import cnn_learner as f22_cnn_learner
+from services import pickle_service, batch_data_loader_service, file_service
+from util.BatchData import BatchData
 
 logger = config.create_logger(__name__)
 
@@ -13,7 +17,7 @@ class TestCnnLearners(TestCase):
 
   def test_get(self):
     # Arrange
-    df = cnn_learner.get_decorated_df()
+    df = f22_cnn_learner.get_decorated_df()
     # Act
 
     # Assert
@@ -25,25 +29,41 @@ class TestCnnLearners(TestCase):
     path = Path('C:\\Kaggle Downloads\\deepfake-detection-challenge\\output\\decorate_df\\dataframes\\df.pkl')
     df = pd.read_pickle(path)
 
-    df_val = df[df['test_train_split'] == 'validation']
+    logger.info(f'DF: {df.head()}')
+
     df_train = df[df['test_train_split'] == 'train']
+    df_val = df[df['test_train_split'] == 'validation']
     df_test = df[df['test_train_split'] == 'test']
 
-    val_path = Path(df_val.iloc[0, df_val.columns.get_loc('path')])
-    logger.info(f'Path: {val_path.parent}')
+    num_fake = df_train[df_train["gross_label"] == "fake"].shape[0]
+    num_real = df_train[df_train["gross_label"] == "real"].shape[0]
+    logger.info(f'rat: {num_fake}: {num_real}: ')
 
-    logger.info(f'DF size: {df_val.shape[0]} rows.')
-    logger.info(f'Columns: {df_val.columns}')
+    return
 
-    il_train = ImageList.from_df(df_train, image_path, cols='filename').split_none()
-    il_val = ImageList.from_df(df_val, image_path, cols='filename').split_none()
-    il_test = ImageList.from_df(df_test, image_path, cols='filename').split_none()
-
-    raise Exception("Finish this code.")
-    # lls = LabelLists(val_path, il_train, il_val).label_from_lists(df_train['score'].tolist(), df_val['score'].tolist())
-    # lls.add_test(il_test, df_test['score'].values)
     #
-    print(lls)
+    #
+    # logger.info(f'df_val Index: {type(df_val.index)}')
+    #
+    # val_path = Path(df_val.iloc[0, df_val.columns.get_loc('path')])
+    # logger.info(f'Path: {val_path.parent}')
+    #
+    # data = (ImageList.from_df(df, image_path, cols='filename')
+    #   .split_by_idxs(train_idx=df_train.index, valid_idx=df_val.index)
+    #   .label_from_df(cols='score', label_cls=FloatList)
+    #   .databunch(bs=32))
+    #
+    # learn = create_cnn(data, models.resnet34, metrics=[error_rate, accuracy])
+    # learn.model.cuda()
+    #
+    # learn.save('before-learner')
+    # learn.lr_find()
+    # learn.recorder.plot()
+
+  def test_columns(self):
+    df, _ = pickle_service.concat_pickled_dataframes(config.MERGED_SWATCH_DATA_PATH)
+
+    logger.info(f'Cols: {df.columns}')
 
   def get_label_list(self, df_val, image_path):
     il_val = ImageList.from_df(df_val, image_path, cols='filename').split_none()

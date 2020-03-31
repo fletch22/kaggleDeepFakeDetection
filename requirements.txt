@@ -3,7 +3,7 @@ numpy==1.17.4
 pandas==0.25.3
 jupyter==1.0.0
 pytest==3.2.1
-opencv-python==3.4.2.16
+opencv-python==4.2.0.32
 matplotlib==3.1.2
 face_recognition==1.2.3
 stopwatch.py==1.0.1

@@ -50,6 +50,10 @@ python -m pip install --upgrade pip
 
 2. pip install -r requirements.txt
 
+# How to Install Linux
+
+    1. Upgraded open-cv version
+    2. sudo apt-get install python python-pip build-essential cmake pkg-config libx11-dev libatlas-base-dev libgtk-3-dev libboost-python-dev -y
 
 # How to run test
 

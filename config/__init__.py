@@ -5,13 +5,20 @@ from config.LoggerFactory import LoggerFactory
 
 PROJECT_PATH = Path(__name__).parent
 
-LOGGING_FILE_PATH: str = "C:\\Users\\Chris\\workspaces\\data\\logs\\kaggleDeepFakeDection\\kaggleDeepFakeDection_1.log"
-
 deepfake_folder_path = 'Kaggle Downloads\\deepfake-detection-challenge'
 
-KAGGLE_DATA_PATH_C = f'C:\\{deepfake_folder_path}'
-KAGGLE_DATA_PATH_D = f'D:\\{deepfake_folder_path}'
-KAGGLE_DATA_PATH_E = f'E:\\{deepfake_folder_path}'
+if os.name == 'nt':
+  LOGGING_FILE_PATH: str = "C:\\Users\\Chris\\workspaces\\data\\logs\\kaggleDeepFakeDection\\kaggleDeepFakeDection_1.log"
+
+  KAGGLE_DATA_PATH_C = f'C:\\{deepfake_folder_path}'
+  KAGGLE_DATA_PATH_D = f'D:\\{deepfake_folder_path}'
+  KAGGLE_DATA_PATH_E = f'E:\\{deepfake_folder_path}'
+else:
+  LOGGING_FILE_PATH = "../logs/kaggleDeepFakeDection_1.log"
+  KAGGLE_DATA_PATH_C = f'../{deepfake_folder_path}'
+  KAGGLE_DATA_PATH_D = f'../{deepfake_folder_path}'
+  KAGGLE_DATA_PATH_E = f'../{deepfake_folder_path}'
+
 MP4_TRAIN_PATH = os.path.join(KAGGLE_DATA_PATH_D, "train_sample_videos")
 SAMPLE_CSV_PATH = os.path.join(KAGGLE_DATA_PATH_D, 'sample_submission.csv')
 

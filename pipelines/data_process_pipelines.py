@@ -14,6 +14,7 @@ from diff import find_diff_random, find_real_swatches
 from diff.DiffSink import DiffSink
 from diff.FaceFinder import FaceFinder
 from pipelines.DecorateDf import DecorateDf
+from pipelines.ImageSplitting import ImageSplitting
 from services import batch_data_loader_service, video_service
 from services.RedisService import RedisService
 from util import blazeface_detection, merge_swatches
@@ -108,9 +109,20 @@ def pipeline_stage_7():
   pipeline_dirname = 'decorate_df'
   pipeline = DecorateDf(root_output=root_output, pipeline_dirname=pipeline_dirname)
 
-  result = pipeline.start(pct_train=80, pct_test=5)
+  result = pipeline.start(pct_train=75, pct_test=5)
 
-  logger.info(f'Result: {result}')
+  logger.info(f'pipeline_stage_7 complete. Result: {result}')
+
+def pipeline_stage_8_5():
+  root_output = config.OUTPUT_PATH_C
+  pipeline_dirname = 'image_splitting'
+  pipeline = ImageSplitting(root_output=root_output, pipeline_dirname=pipeline_dirname)
+
+  input_path = Path(config.OUTPUT_PATH_C, 'decorate_df', 'dataframes', 'df.pkl')
+
+  result = pipeline.start(max_process=None, input_path=input_path)
+  
+  logger.info(f'pipeline_stage_8_5 complete. Result: {result}')
 
 
 def pipeline_stage_8():
@@ -345,5 +357,5 @@ def pipeline_stage_14():
   pipeline_stage_11()
 
 if __name__ == '__main__':
-  pipeline_stage_14()
+  pipeline_stage_8_5()
 

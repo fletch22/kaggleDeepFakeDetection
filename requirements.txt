@@ -17,6 +17,6 @@ tensorflow-gpu==1.15.0
 scikit-image==0.16.2
 moviepy==1.0.1
 librosa==0.7.2
-fastai==1.0.59
+fastai==1.0.60
 imutils==0.5.3
 redis==3.3.5

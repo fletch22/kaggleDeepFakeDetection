@@ -193,3 +193,16 @@ class TestCnn(TestCase):
     # pfl = PredictFromLearner(root_output=dir_path, pipeline_dirname='')
     #
     # pfl.start(images_folder=)
+
+  def test(self):
+    path = Path('C:\\Kaggle Downloads\\deepfake-detection-challenge\\output\\decorate_df\\dataframes\\df.pkl')
+    df = pd.read_pickle(path)
+    df['path'] = df['path'].apply(lambda x: str(x)).astype(str)
+    df['original_path'] = df['original_path'].apply(lambda x: str(x)).astype(str)
+
+    logger.info(f'DF types: {df.dtypes}')
+
+    output_path = Path('C:\\Kaggle Downloads\\deepfake-detection-challenge\\output\\decorate_df\\dataframes\\df_cp.pkl')
+    df.to_pickle(output_path)
+
+    logger.info(f"Cols: {df.columns}")

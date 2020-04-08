@@ -16,13 +16,13 @@ if os.name == 'nt':
     KAGGLE_DATA_PATH_D = f'D:\\{deepfake_folder_path}'
     KAGGLE_DATA_PATH_E = f'E:\\{deepfake_folder_path}'
 else:
-    deepfake_folder_path = 'f22data'
+    deepfake_folder_path = '/home/jupyter/f22data'
     
-    LOGGING_FILE_PATH = "../logs/kaggleDeepFakeDection_1.log"
+    LOGGING_FILE_PATH = "/home/jupyter/logs/kaggleDeepFakeDection_1.log"
     
-    KAGGLE_DATA_PATH_C = f'../{deepfake_folder_path}'
-    KAGGLE_DATA_PATH_D = f'../{deepfake_folder_path}'
-    KAGGLE_DATA_PATH_E = f'../{deepfake_folder_path}'
+    KAGGLE_DATA_PATH_C = deepfake_folder_path
+    KAGGLE_DATA_PATH_D = deepfake_folder_path
+    KAGGLE_DATA_PATH_E = deepfake_folder_path
     
 Path(LOGGING_FILE_PATH).parent.mkdir(exist_ok=True)
 
